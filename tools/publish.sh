@@ -13,7 +13,7 @@ cd "$(dirname "$0")/.."
 REPO="House-of-Helios/xmrange"
 # Working notes, research, workflows, retired tools, measurements from the owner's Macs, the agent's
 # instructions, and the dev-app builder (it writes to a folder on the owner's Macs).
-PRIVATE=(_Plans _Research _Workflows _Archive _Past data THESIS.md CLAUDE.md tools/make-dev-app.sh)
+PRIVATE=(_Plans _Research _Workflows _Archive _Past _Reports _Inbox data THESIS.md CLAUDE.md tools/make-dev-app.sh)
 
 [ -z "$(git status --porcelain)" ] || { echo "❌ uncommitted changes — commit first"; exit 1; }
 git remote get-url origin >/dev/null 2>&1 || git remote add origin "https://github.com/$REPO.git"
