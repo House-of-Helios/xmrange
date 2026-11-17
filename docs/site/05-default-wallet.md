@@ -8,6 +8,8 @@ You see it three places:
 - the wallet card, which reads "default · ghostdrip dev wallet";
 - settings, on the wallet row.
 
+![The wallet card while the default is in use: "default · ghostdrip dev wallet"](img/default-wallet.png)
+
 It exists so the app can run the moment you open it. If you leave it in place, your mining pays the developer.
 
 ## Use your own

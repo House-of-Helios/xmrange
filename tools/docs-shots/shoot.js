@@ -53,6 +53,12 @@ async (page) => {
   await p.screenshot({ path: `${OUT}/first-run-notice.png` });
   await ctx.close();
 
+  // the wallet card while the default (GhostDrip dev wallet) is in use
+  ({ ctx, p } = await open("s=first-run"));
+  await p.waitForTimeout(500);
+  await p.screenshot({ path: `${OUT}/default-wallet.png`, clip: await clipOf(p, "#grid [data-mod=wallet]", 24) });
+  await ctx.close();
+
   // wallet edit with a format-correct fake address
   ({ ctx, p } = await open("s=wallet"));
   await p.locator('#grid [data-act="wallet-edit"]').first().click();

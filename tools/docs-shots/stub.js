@@ -13,7 +13,7 @@
   const info = {
     version: "0.0.1", tagline: "hashes per watt · every watt, weighed", machine, max_threads: 10,
     low_power: false, low_power_supported: true, form: "laptop", price: null,
-    wallet: { masked: FAKE_MASK, is_default: dflt, label: dflt ? "default · ghostdrip dev wallet" : "your wallet" },
+    wallet: { masked: dflt ? "47C4…zPB" : FAKE_MASK, is_default: dflt, label: dflt ? "default · ghostdrip dev wallet" : "your wallet" },
     dev_build: false, self_check: false, self_check_live: false, startup_note: null,
   };
   const pick5 = { setup: { threads: 5, e_core_clamp: false, utility: false }, low_power: false, hw: 220.53, hs: 3330 };
