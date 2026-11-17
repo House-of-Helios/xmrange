@@ -19,6 +19,7 @@ Open the Apple menu and choose **About This Mac**.
 - If you see **Processor** followed by a name like "Intel Core i5", take intel.
 
 <!-- screenshot: About This Mac showing the Chip line, and beside it one showing the Processor line -->
+![About This Mac on an Apple silicon Mac (Chip line) and on an Intel Mac (Processor line)](img/about-this-mac.png)
 
 ## 2. Check the download (optional)
 
@@ -44,6 +45,7 @@ Apple has not signed XMRange, so macOS stops the first open. This is expected. T
 2. Choose **Open**, then confirm.
 
 <!-- screenshot: Privacy & Security with the Open Anyway button -->
+![Privacy & Security with the Open Anyway button](img/open-anyway.png)
 
 You only do this once. Later updates arrive from inside the app (see [Updates](07-updates.md)).
 

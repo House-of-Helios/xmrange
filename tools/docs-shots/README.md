@@ -1,1 +1,3 @@
 Docs screenshots from test data, without the real app. `stub.js` fakes `window.__TAURI__` (fixtures: a healthy M2 Pro MacBook, a fake wallet). To redo `docs/site/img/*.png`: serve the UI (`cd crates/xmrange-app/ui && python3 -m http.server 3600 --bind 127.0.0.1`), then run `shoot.js` through Playwright (MCP `browser_run_code_unsafe` with `filename`), and stop the server.
+
+macOS install mock-ups (HTML/CSS, no real capture): `macos/about-this-mac.html`, `macos/open-anyway.html`. Re-render with `macos/shoot.js` through Playwright (MCP `browser_run_code_unsafe` with `filename`, run from the repo root; file:// needs no server). Output goes to `docs/site/img/`.
