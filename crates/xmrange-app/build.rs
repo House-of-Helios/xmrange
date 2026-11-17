@@ -8,6 +8,7 @@ fn main() {
         "start_trials",
         "node_status",
         "save_diagnostics",
+        "report_text", "save_report", "send_report",
         "copy_text",
         "payout_totals",
         "network_log",

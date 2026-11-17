@@ -31,7 +31,7 @@ else
   CARGO_TARGET=()
   BIN_DIR=release
 fi
-for b in "$XMRIG:build-xmrig (x86_64: build-x86_64)" "$P2POOL:build-p2pool (x86_64: build-x86_64)" "$ARTI:build-arti (x86_64: build-x86_64)" "$MONEROD:build-monerod"; do
+for b in "$XMRIG:build-xmrig (x86_64: build-x86_64)" "$P2POOL:build-p2pool (x86_64: build-x86_64)" "$ARTI:build-arti (x86_64: build-x86_64)" "$MONEROD:build-monerod" "$ROOT/vendor/universal/house-report:build-house-report"; do
   if [ ! -x "${b%%:*}" ]; then
     echo "${b%%:*} not built: run tools/${b##*:}.sh first" >&2
     exit 1
@@ -55,6 +55,8 @@ cp "$P2POOL" "$APP/Contents/MacOS/p2pool"
 cp "$ARTI" "$APP/Contents/MacOS/arti"
 # Stage 2 (Plan 6): XMRange's own Monero node, for users who don't run the Monero GUI.
 cp "$MONEROD" "$APP/Contents/MacOS/monerod"
+# Problem reports (doctrine §1d): the universal sender, the same file for both arches.
+cp "$ROOT/vendor/universal/house-report" "$APP/Contents/MacOS/house-report"
 
 # Icon: the app icon PNG → .icns through an iconset (same recipe as make-dev-app.sh).
 ICONSET="$TARGET/XMRange.iconset"

@@ -116,6 +116,8 @@ struct AppState {
     ledger: Mutex<Option<LedgerWriter>>,
     /// What startup did that the user should hear about (a reaped orphan, the Ledger), for the tape.
     startup_note: Option<String>,
+    /// The last run left its marker: it did not exit cleanly. The UI offers a report, once.
+    crashed_last_time: bool,
     /// M1: held for the app's lifetime; the OS releases it when the process ends, however it ends.
     _instance_lock: Option<File>,
 }
@@ -396,6 +398,12 @@ fn spawn_deadman(handle: AppHandle, start_ppid: u32, started: Instant) {
     });
 }
 
+/// `send_report` refuses with this prefix and the scrubbed text when scrubbing changed what the user sent.
+const RESCRUBBED: &str = "rescrubbed:\n";
+
+/// Present from launch to a clean quit; found at launch, the last run ended without one.
+const RUNNING_MARKER: &str = "running.marker";
+
 /// The one stop path for quitting, shared by `RunEvent::Exit`, the SIGTERM/SIGINT handler and the
 /// dead-man's switch. It stops a live engine, then waits for any stop already in flight (a stop
 /// clicked just before quitting, I3), so the process never exits with xmrig still running. No
@@ -411,7 +419,9 @@ fn stop_engine_for_exit(app: &AppHandle) {
     // Then the own Monero node (its database closes cleanly before the app goes).
     stop_node_for_exit();
     // Every engine is down, so no more trials: close the Ledger.
-    if let Some(msg) = close_ledger(&state.ledger) {
+    let msg = close_ledger(&state.ledger);
+    let _ = std::fs::remove_file(data_dir().join(RUNNING_MARKER));
+    if let Some(msg) = msg {
         // Never println!: from the signal thread a closed pipe must not panic.
         let _ = std::io::Write::write_all(&mut std::io::stderr(), msg.as_bytes());
     }
@@ -469,6 +479,7 @@ fn app_info(state: State<AppState>) -> Result<serde_json::Value, String> {
         "self_check": self_check_mode(),
         "self_check_live": self_check_live(),
         "startup_note": state.startup_note,
+        "crashed_last_time": state.crashed_last_time,
     });
     Ok(info)
 }
@@ -1124,67 +1135,162 @@ fn sweep_progress(recs: &[xmrange_core::ledger::TrialRecord], e_cores: u32, lp: 
     Some([done, plan.len() as u32])
 }
 
+/// Every name that could identify the person or the Mac, from the Mac itself, and the home folder.
+fn report_private(settings: &Settings) -> (Vec<String>, Option<String>) {
+    let home = std::env::var("HOME").ok();
+    let mut private: Vec<String> = ["ComputerName", "LocalHostName", "HostName"]
+        .iter()
+        .filter_map(|k| std::process::Command::new("/usr/sbin/scutil").args(["--get", k]).output().ok())
+        .filter_map(|o| String::from_utf8(o.stdout).ok())
+        .map(|s| s.trim().to_string())
+        .collect();
+    private.extend(std::env::var("USER").ok());
+    private.extend(home.as_deref().and_then(|h| Path::new(h).file_name()).map(|n| n.to_string_lossy().into_owned()));
+    if settings.worker != Settings::default().worker {
+        private.push(settings.worker.clone());
+    }
+    (private, home)
+}
+
+/// The scrubbed diagnostics text, with the words and home folder that scrubbing used (so a report
+/// can scrub the user's own note the same way). Blocking: it reads the Mac and the Ledger.
+fn diagnostics_text(settings: &Settings, chip: Option<String>, ledger: Option<xmrange_core::ledger::LedgerHandle>, tape: &[String], hours: &[String]) -> (String, Vec<String>, Option<String>) {
+    let macos = std::process::Command::new("/usr/bin/sw_vers").arg("-productVersion").output().ok()
+        .and_then(|o| String::from_utf8(o.stdout).ok()).map(|s| s.trim().to_string());
+    let p2pool = settings.pool == xmrange_core::settings::Pool::P2pool;
+    let (private, home) = report_private(settings);
+    let facts = xmrange_core::diagnostics::Facts {
+        version: env!("CARGO_PKG_VERSION"),
+        macos,
+        chip: chip.as_deref(),
+        model: std::process::Command::new("/usr/sbin/sysctl").args(["-n", "hw.model"]).output().ok()
+            .and_then(|o| String::from_utf8(o.stdout).ok()).map(|s| s.trim().to_string()),
+        pool: if p2pool { "p2pool" } else { "moneroocean" },
+        tor: settings.tor,
+        node: p2pool.then(|| xmrange_core::node::probe(settings.node)),
+        cost_inputs: format!("{} {}/kwh · period {:?}", settings.rate_per_kwh, settings.currency, settings.period).to_lowercase(),
+        running: match (settings.optimizer.mode, &settings.optimizer.holding) {
+            (Mode::Hold, Some(p)) => p.setup.label(),
+            _ => Setup { threads: settings.threads, e_core_clamp: settings.e_cores_only, utility: settings.utility_manual }.label(),
+        },
+        optimizer_mode: &format!("{:?}", settings.optimizer.mode).to_lowercase(),
+        trials: ledger.as_ref().and_then(|h| h.trials(1).ok().map(|(n, _)| n)),
+        low_power: lowpower::latest(),
+        tape,
+        p2pool_output: &if p2pool { xmrange_core::p2pool::recent_output() } else { Vec::new() },
+        // The wallet is only compared against, never written into the report.
+        trials_table: &ledger
+            .as_ref()
+            .and_then(|h| h.trials(engine::HISTORY_TRIALS).ok())
+            .map(|(_, recs)| xmrange_core::diagnostics::trial_lines(&settings.optimizer, if settings.measure == xmrange_core::settings::Measure::Cpu { "cpu" } else { "whole mac" }, &recs, &settings.profile_log))
+            .unwrap_or_default(),
+        hours,
+        privacy: &xmrange_core::audit::report(&resolve_wallet(settings.wallet.0.as_deref()).0, xmrange_core::config::API_PORT),
+        private: &private,
+        home: home.as_deref(),
+    };
+    let text = xmrange_core::diagnostics::report(&facts);
+    (text, private, home)
+}
+
 /// ⚙️ save diagnostics: a scrubbed plain-text report (xmrange-core `diagnostics`: no wallet, no
 /// IPs, no user, computer or worker name), written only when the user presses the button, to the
 /// `.txt` file they picked in the save dialog. Nothing is sent anywhere. Returns the file's name.
 #[tauri::command]
 async fn save_diagnostics(state: State<'_, AppState>, tape: Vec<String>, hours: Vec<String>, path: String) -> Result<String, String> {
-    let settings = state.settings.lock().unwrap_or_else(|e| e.into_inner()).clone();
-    let target = std::path::PathBuf::from(&path);
-    if target.extension().and_then(|e| e.to_str()) != Some("txt") || !target.parent().is_some_and(Path::is_dir) {
-        return Err("diagnostics save as a .txt file in an existing folder".into());
-    }
-    let chip = state.machine.as_ref().map(|m| m.chip.clone());
-    let ledger = state.ledger.lock().unwrap_or_else(|e| e.into_inner()).as_ref().map(LedgerWriter::handle);
+    let target = txt_target(&path)?;
+    let (settings, chip, ledger) = report_inputs(&state);
     tauri::async_runtime::spawn_blocking(move || {
-        let macos = std::process::Command::new("/usr/bin/sw_vers").arg("-productVersion").output().ok()
-            .and_then(|o| String::from_utf8(o.stdout).ok()).map(|s| s.trim().to_string());
-        let p2pool = settings.pool == xmrange_core::settings::Pool::P2pool;
-        // Every name that could identify the person or the Mac, from the Mac itself.
-        let home = std::env::var("HOME").ok();
-        let mut private: Vec<String> = ["ComputerName", "LocalHostName", "HostName"]
-            .iter()
-            .filter_map(|k| std::process::Command::new("/usr/sbin/scutil").args(["--get", k]).output().ok())
-            .filter_map(|o| String::from_utf8(o.stdout).ok())
-            .map(|s| s.trim().to_string())
-            .collect();
-        private.extend(std::env::var("USER").ok());
-        private.extend(home.as_deref().and_then(|h| Path::new(h).file_name()).map(|n| n.to_string_lossy().into_owned()));
-        if settings.worker != Settings::default().worker {
-            private.push(settings.worker.clone());
-        }
-        let facts = xmrange_core::diagnostics::Facts {
-            version: env!("CARGO_PKG_VERSION"),
-            macos,
-            chip: chip.as_deref(),
-            model: std::process::Command::new("/usr/sbin/sysctl").args(["-n", "hw.model"]).output().ok()
-                .and_then(|o| String::from_utf8(o.stdout).ok()).map(|s| s.trim().to_string()),
-            pool: if p2pool { "p2pool" } else { "moneroocean" },
-            tor: settings.tor,
-            node: p2pool.then(|| xmrange_core::node::probe(settings.node)),
-            cost_inputs: format!("{} {}/kwh · period {:?}", settings.rate_per_kwh, settings.currency, settings.period).to_lowercase(),
-            running: match (settings.optimizer.mode, &settings.optimizer.holding) {
-                (Mode::Hold, Some(p)) => p.setup.label(),
-                _ => Setup { threads: settings.threads, e_core_clamp: settings.e_cores_only, utility: settings.utility_manual }.label(),
-            },
-            optimizer_mode: &format!("{:?}", settings.optimizer.mode).to_lowercase(),
-            trials: ledger.as_ref().and_then(|h| h.trials(1).ok().map(|(n, _)| n)),
-            low_power: lowpower::latest(),
-            tape: &tape,
-            p2pool_output: &if p2pool { xmrange_core::p2pool::recent_output() } else { Vec::new() },
-            // The wallet is only compared against, never written into the report.
-            trials_table: &ledger
-                .as_ref()
-                .and_then(|h| h.trials(engine::HISTORY_TRIALS).ok())
-                .map(|(_, recs)| xmrange_core::diagnostics::trial_lines(&settings.optimizer, if settings.measure == xmrange_core::settings::Measure::Cpu { "cpu" } else { "whole mac" }, &recs, &settings.profile_log))
-                .unwrap_or_default(),
-            hours: &hours,
-            privacy: &xmrange_core::audit::report(&resolve_wallet(settings.wallet.0.as_deref()).0, xmrange_core::config::API_PORT),
-            private: &private,
-            home: home.as_deref(),
-        };
-        std::fs::write(&target, xmrange_core::diagnostics::report(&facts)).map_err(|e| e.to_string())?;
+        let (text, _, _) = diagnostics_text(&settings, chip, ledger, &tape, &hours);
+        std::fs::write(&target, text).map_err(|e| e.to_string())?;
         Ok(target.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+fn txt_target(path: &str) -> Result<std::path::PathBuf, String> {
+    let target = std::path::PathBuf::from(path);
+    if target.extension().and_then(|e| e.to_str()) != Some("txt") || !target.parent().is_some_and(Path::is_dir) {
+        return Err("reports save as a .txt file in an existing folder".into());
+    }
+    Ok(target)
+}
+
+fn report_inputs(state: &AppState) -> (Settings, Option<String>, Option<xmrange_core::ledger::LedgerHandle>) {
+    (
+        state.settings.lock().unwrap_or_else(|e| e.into_inner()).clone(),
+        state.machine.as_ref().map(|m| m.chip.clone()),
+        state.ledger.lock().unwrap_or_else(|e| e.into_inner()).as_ref().map(LedgerWriter::handle),
+    )
+}
+
+/// The report the user reads before anything is sent: header, their note, the scrubbed diagnostics.
+#[tauri::command]
+async fn report_text(state: State<'_, AppState>, kind: String, note: String, tape: Vec<String>, hours: Vec<String>) -> Result<String, String> {
+    if !xmrange_core::report::KINDS.contains(&kind.as_str()) {
+        return Err("a report is a problem, an idea or a crash".into());
+    }
+    let (settings, chip, ledger) = report_inputs(&state);
+    tauri::async_runtime::spawn_blocking(move || {
+        let (diag, private, home) = diagnostics_text(&settings, chip, ledger, &tape, &hours);
+        let macos = std::process::Command::new("/usr/bin/sw_vers").arg("-productVersion").output().ok()
+            .and_then(|o| String::from_utf8(o.stdout).ok()).map(|s| s.trim().to_string()).unwrap_or_else(|| "unknown".into());
+        let arch = if cfg!(target_arch = "aarch64") { "apple silicon" } else { "intel" };
+        Ok(xmrange_core::report::build(&kind, env!("CARGO_PKG_VERSION"), &macos, arch, &note, &diag, &private, home.as_deref()))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Saves the (re-scrubbed) report text to the `.txt` file the user picked. Returns the file's name.
+#[tauri::command]
+async fn save_report(state: State<'_, AppState>, text: String, path: String) -> Result<String, String> {
+    let target = txt_target(&path)?;
+    let settings = state.settings.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let (private, home) = report_private(&settings);
+        std::fs::write(&target, xmrange_core::report::clean(&text, &private, home.as_deref())).map_err(|e| e.to_string())?;
+        Ok(target.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Sends one report, only when the user presses send: the text is scrubbed again (they may have
+/// edited it), then `house-report` seals it for XMRange's key and posts it to the Nostr relays
+/// through the shared Arti, whatever the mining mode. Returns house-report's `{sent, relays}`.
+#[tauri::command]
+async fn send_report(state: State<'_, AppState>, kind: String, text: String) -> Result<serde_json::Value, String> {
+    if self_check_mode() {
+        return Err("self-check never sends".into());
+    }
+    if !xmrange_core::report::KINDS.contains(&kind.as_str()) {
+        return Err("a report is a problem, an idea or a crash".into());
+    }
+    let settings = state.settings.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        use std::io::Write;
+        let (private, home) = report_private(&settings);
+        let cleaned = xmrange_core::report::clean(&text, &private, home.as_deref());
+        // Never silent: if scrubbing changes the box, the UI shows the scrubbed text and asks again.
+        if cleaned != text {
+            return Err(format!("{RESCRUBBED}{cleaned}"));
+        }
+        let _tor = xmrange_core::tor::acquire(&|| false).map_err(|e| format!("tor did not start: {e}"))?;
+        let mut child = std::process::Command::new(xmrange_core::paths::house_report_binary())
+            .args(["--to", xmrange_core::report::REPORT_PUBKEY, "--app", "xmrange", "--version", env!("CARGO_PKG_VERSION"), "--kind", &kind, "--socks", &xmrange_core::tor::socks_addr()])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .map_err(|e| format!("house-report did not start: {e}"))?;
+        child.stdin.take().ok_or("house-report has no input")?.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
+        let out = child.wait_with_output().map_err(|e| e.to_string())?;
+        if !out.status.success() {
+            return Err("no relay took the report".to_string());
+        }
+        serde_json::from_slice(&out.stdout).map_err(|e| e.to_string())
     })
     .await
     .map_err(|e| e.to_string())?
@@ -1237,6 +1343,7 @@ fn allowed_now(s: &Settings) -> Vec<String> {
     if s.price_feed && s.currency == "$" {
         out.push("kraken, then yahoo finance: the xmr price, hourly, through tor".into());
     }
+    out.push("reports: only when you press send, through tor (4 nostr relays)".into());
     out.push(if cfg!(feature = "dev-diagnostics") {
         "updates: none (dev build)".into()
     } else {
@@ -1686,6 +1793,12 @@ fn main() -> tauri::Result<()> {
     if let Err(e) = xmrange_core::settings::migrate_old_secrets(&data_dir()) {
         eprintln!("dev secrets migration: {e}");
     }
+    // The marker lives while the app runs; `stop_engine_for_exit` (every quit path) removes it.
+    let crashed_last_time = !self_check_mode() && data_dir().join(RUNNING_MARKER).exists();
+    if !self_check_mode() {
+        let _ = std::fs::create_dir_all(data_dir());
+        let _ = std::fs::write(data_dir().join(RUNNING_MARKER), b"");
+    }
     let settings = Settings::load(&data_dir());
     let opened = open_default();
     if let Some(note) = &opened.note {
@@ -1703,6 +1816,7 @@ fn main() -> tauri::Result<()> {
         machine,
         ledger: Mutex::new(ledger),
         startup_note,
+        crashed_last_time,
         _instance_lock: instance_lock,
     };
 
@@ -1730,6 +1844,9 @@ fn main() -> tauri::Result<()> {
             start_trials,
             node_status,
             save_diagnostics,
+            report_text,
+            save_report,
+            send_report,
             copy_text,
             payout_totals,
             network_log,
@@ -2546,6 +2663,7 @@ mod tests {
             machine: None,
             ledger: Mutex::new(None),
             startup_note: None,
+            crashed_last_time: false,
             _instance_lock: None,
         }
     }

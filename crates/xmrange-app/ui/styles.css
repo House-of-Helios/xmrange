@@ -1652,6 +1652,30 @@ img {
   overflow-wrap: anywhere;
 }
 
+/* the feedback sheet: a note and the full report, both plain editable text */
+.fb__text {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid var(--track);
+  border-radius: 8px;
+  background: var(--ground);
+  color: var(--text);
+  font: 12px/1.4 ui-monospace, "SF Mono", Menlo, monospace;
+  resize: none;
+}
+
+.fb__text--note {
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.fb__status {
+  margin: 0;
+  min-height: 18px;
+  text-align: left;
+}
+
 /* the xmr price row: symbol · amount · typed | fetch; the fetched price's age under it */
 .price {
   gap: 6px;

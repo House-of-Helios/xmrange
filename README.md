@@ -24,6 +24,7 @@ XMRange connects only to the pool that you select. It does not use both pools at
 | p2pool with XMRange's own node | p2pool peers and Monero peers | the same as above. Monero peers see that you run a node. |
 | Tor on (the default) | the Tor network | — |
 | XMR price "fetch" (off by default) | Kraken, then Yahoo Finance, through Tor | one price request each hour |
+| Problem report (only when you press send) | Nostr relays `nos.lol`, `relay.primal.net`, `relay.snort.social`, `nostr.mom`, through Tor | a message sealed for XMRange's key: the version, your note and scrubbed diagnostics, with no wallet, no IP address and no names. You read and can edit all of it first. |
 | Update checks | GitHub, through Tor | a request for the latest XMRange release, at launch and every 6 hours. Nothing about you or your mining. |
 
 These things never leave your Mac:

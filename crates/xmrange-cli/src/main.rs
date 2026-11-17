@@ -37,6 +37,9 @@ enum Cmd {
         #[arg(long)]
         picks: bool,
     },
+    /// Writes docs/site/examples/report-input.txt and report-sent.txt (the documented report sample).
+    #[cfg(feature = "dev-diagnostics")]
+    ReportSample,
     /// Mine and print a live line every 5 s. Ctrl-C stops.
     Mine {
         #[arg(long, default_value_t = 5)]
@@ -103,6 +106,8 @@ fn main() -> Result<()> {
         Cmd::Wallet { cmd } => wallet(cmd),
         #[cfg(feature = "dev-diagnostics")]
         Cmd::Ledger { drop_label, picks } => ledger_stats(drop_label.as_deref(), picks),
+        #[cfg(feature = "dev-diagnostics")]
+        Cmd::ReportSample => Ok(xmrange_core::report::write_sample(&xmrange_core::paths::workspace_root().join("docs/site/examples"))?),
         Cmd::Mine { threads, minutes, e_core } => mine(threads, minutes, e_core, &stop),
         Cmd::Trial { threads, measure, label, e_core, no_yield, utility, utility_launch } => {
             if measure == 0 {

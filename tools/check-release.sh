@@ -99,9 +99,9 @@ check "app frontend ($DIST/)" "$(find "$UI" -type f -exec cat {} + | LC_ALL=C tr
 # The bundled helpers (xmrig, p2pool, Arti): third-party code, so only the path needles apply (no
 # repo or home path, i.e. no username), each with its own known-present self-test string.
 if [ "${ARCH:-arm64}" = x86_64 ]; then
-  HELPERS=("xmrig-mo/build-x86_64/xmrig:XMRig" "p2pool-x86_64/build/p2pool:P2Pool" "arti/target/x86_64-apple-darwin/release/arti:arti" "monero/build-out/x86_64/monerod:Monero")
+  HELPERS=("xmrig-mo/build-x86_64/xmrig:XMRig" "p2pool-x86_64/build/p2pool:P2Pool" "arti/target/x86_64-apple-darwin/release/arti:arti" "monero/build-out/x86_64/monerod:Monero" "universal/house-report:house-report")
 else
-  HELPERS=("xmrig-mo/build/xmrig:XMRig" "p2pool/build/p2pool:P2Pool" "arti/target/release/arti:arti" "monero/build-out/arm64/monerod:Monero")
+  HELPERS=("xmrig-mo/build/xmrig:XMRig" "p2pool/build/p2pool:P2Pool" "arti/target/release/arti:arti" "monero/build-out/arm64/monerod:Monero" "universal/house-report:house-report")
 fi
 for h in "${HELPERS[@]}"; do
   bin="$ROOT/vendor/${h%%:*}"; known="${h##*:}"
@@ -131,5 +131,5 @@ for cmd in wallet ledger; do
   if grep -w "$cmd" <<<"$HELP" >/dev/null; then echo "LEAK: dev-only '$cmd' command in the cli release"; fail=1; fi
 done
 
-[ $fail -eq 0 ] && echo "release privacy check: PASS (${ARCH:-arm64}: cli + app + frontend + bundled xmrig, p2pool, arti, monerod)"
+[ $fail -eq 0 ] && echo "release privacy check: PASS (${ARCH:-arm64}: cli + app + frontend + bundled xmrig, p2pool, arti, monerod, house-report)"
 exit $fail

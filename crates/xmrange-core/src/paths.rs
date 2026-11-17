@@ -52,6 +52,11 @@ pub fn arti_binary() -> PathBuf {
     std::env::var_os("XMRANGE_ARTI").map(PathBuf::from).unwrap_or_else(|| bundled("arti"))
 }
 
+/// house-report, the problem-report sender (tools/build-house-report.sh). `XMRANGE_HOUSE_REPORT` always wins.
+pub fn house_report_binary() -> PathBuf {
+    std::env::var_os("XMRANGE_HOUSE_REPORT").map(PathBuf::from).unwrap_or_else(|| bundled("house-report"))
+}
+
 /// monerod, XMRange's own Monero node (tools/build-monerod.sh). `XMRANGE_MONEROD` always wins.
 pub fn monerod_binary() -> PathBuf {
     std::env::var_os("XMRANGE_MONEROD").map(PathBuf::from).unwrap_or_else(|| bundled("monerod"))
@@ -64,6 +69,7 @@ fn bundled(name: &str) -> PathBuf {
     workspace_root().join(match name {
         "p2pool" => "vendor/p2pool/build/p2pool",
         "monerod" => "vendor/monero/build-out/arm64/monerod",
+        "house-report" => "vendor/universal/house-report",
         _ => "vendor/arti/target/release/arti",
     })
 }

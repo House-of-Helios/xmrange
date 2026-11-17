@@ -127,7 +127,7 @@ export function setNoticeVisible(show) {
   $("notice").hidden = !show;
   $("notice-pool").textContent = state.settings?.tor === false ? NOTICE_POOL.direct : NOTICE_POOL.tor;
   $("notice-wallet").hidden = state.info?.wallet?.is_default !== true;
-  $("board").classList.toggle("has-notice", !!show);
+  $("board").classList.toggle("has-notice", !!show || !$("crash-offer").hidden);
 }
 
 function renderNotice() {
@@ -836,6 +836,81 @@ async function saveDiagnostics() {
   }
 }
 
+/** 📮 feedback (doctrine §1d): the report is built in Rust, shown whole and editable, and goes
+ * out only when the user presses send. `edited` keeps their edits when the kind or note changes. */
+const feedback = { kind: "problem", edited: false, busy: false };
+
+function fbSay(text) {
+  $("fb-status").textContent = text;
+}
+
+async function fbBuild() {
+  fbSay("");
+  try {
+    const tape = state.tape.map((l) => `${l.ts} ${l.tag} ${l.msg}`);
+    $("fb-text").value = await invoke("report_text", { kind: feedback.kind, note: $("fb-note").value, tape, hours: state.hours });
+    feedback.edited = false;
+  } catch (err) {
+    fbSay(errText(err));
+  }
+}
+
+function fbKind(kind) {
+  feedback.kind = kind;
+  for (const b of $("fb-kind").querySelectorAll("[data-kind]")) b.setAttribute("aria-pressed", String(b.dataset.kind === kind));
+}
+
+/** Opens the sheet; `kind` "crash" (from the crash offer) shows the crash choice. */
+export async function openFeedback(kind = "problem") {
+  $("fb-kind").querySelector('[data-kind="crash"]').hidden = kind !== "crash";
+  fbKind(kind);
+  $("fb-note").value = "";
+  feedback.busy = false;
+  $("fb-send").disabled = false;
+  openDialog("feedback", "fb-note");
+  await fbBuild();
+}
+
+async function fbCopy() {
+  try {
+    await invoke("copy_text", { text: $("fb-text").value });
+    fbSay("copied");
+  } catch (err) {
+    fbSay(errText(err));
+  }
+}
+
+async function fbSave() {
+  const path = await dialogHooks.pickSave(`xmrange-report-${fileStamp(new Date())}.txt`, "save report");
+  if (!path) return;
+  try {
+    fbSay(`saved ${await invoke("save_report", { text: $("fb-text").value, path })}`);
+  } catch (err) {
+    fbSay(errText(err));
+  }
+}
+
+async function fbSend() {
+  if (feedback.busy) return;
+  feedback.busy = true;
+  $("fb-send").disabled = true;
+  fbSay("sending through tor");
+  try {
+    const r = await invoke("send_report", { kind: feedback.kind, text: $("fb-text").value });
+    fbSay(`sent to ${r.sent} relay${r.sent === 1 ? "" : "s"}`);
+  } catch (err) {
+    const m = String(err?.message ?? err);
+    if (m.startsWith("rescrubbed:\n")) {
+      $("fb-text").value = m.slice("rescrubbed:\n".length);
+      fbSay("scrubbed more: read the text, then press send again");
+    } else {
+      fbSay("couldn't send — copy instead");
+    }
+  }
+  feedback.busy = false;
+  $("fb-send").disabled = false;
+}
+
 /** ⚙️ tor: route the mode's connections through the bundled Tor client (next start). */
 async function setTor(on) {
   if (!state.settings || isRunning(runState()) || state.settings.tor === on) return;
@@ -846,7 +921,7 @@ async function setTor(on) {
 
 // ── dialogs: the settings sheet and the low power guide ────────────────
 
-const DIALOGS = ["sheet", "guide", "node-guide", "price-confirm", "network-log"];
+const DIALOGS = ["sheet", "guide", "node-guide", "price-confirm", "network-log", "feedback"];
 const dialogReturnFocus = {};
 
 function openDialog(id, focusId) {
@@ -1203,7 +1278,7 @@ export function folderBaseName(path) {
  */
 export const dialogHooks = {
   pickFolder: (title) => window.__TAURI__.dialog.open({ directory: true, multiple: false, title }),
-  pickSave: (name) => window.__TAURI__.dialog.save({ title: "save diagnostics", defaultPath: name, filters: [{ name: "Text", extensions: ["txt"] }] }),
+  pickSave: (name, title = "save diagnostics") => window.__TAURI__.dialog.save({ title, defaultPath: name, filters: [{ name: "Text", extensions: ["txt"] }] }),
   confirmClear: () =>
     window.__TAURI__.dialog.ask("Delete all trials? The next run starts at trial 1.", { title: "reset trials", kind: "warning", okLabel: "reset", cancelLabel: "cancel" }),
 };
@@ -1359,6 +1434,25 @@ function wire() {
     if (b) setTheme(b.dataset.themePick, true);
   });
   $("diag-save").addEventListener("click", saveDiagnostics);
+  $("fb-open").addEventListener("click", () => openFeedback("problem"));
+  $("feedback-close").addEventListener("click", () => closeDialog("feedback"));
+  $("feedback-scrim").addEventListener("click", () => closeDialog("feedback"));
+  $("fb-kind").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-kind]");
+    if (!b || b.dataset.kind === feedback.kind) return;
+    fbKind(b.dataset.kind);
+    if (!feedback.edited) fbBuild();
+  });
+  $("fb-note").addEventListener("change", () => !feedback.edited && fbBuild());
+  $("fb-text").addEventListener("input", () => (feedback.edited = true));
+  $("fb-copy").addEventListener("click", fbCopy);
+  $("fb-save").addEventListener("click", fbSave);
+  $("fb-send").addEventListener("click", fbSend);
+  $("crash-send").addEventListener("click", () => {
+    $("crash-offer").hidden = true;
+    openFeedback("crash");
+  });
+  $("crash-dismiss").addEventListener("click", () => ($("crash-offer").hidden = true));
   $("set-tor").addEventListener("click", (e) => {
     const b = e.target.closest("[data-tor]");
     if (b) setTor(b.dataset.tor === "on");
@@ -1427,6 +1521,8 @@ async function init() {
   state.ui.noticeDismissed = settings?.notice_dismissed === true;
   if (typeof info?.startup_note === "string" && info.startup_note) pushTape([{ ts: clock(), tag: "miner", msg: info.startup_note }]);
   applyTheme(settings?.theme);
+  renderNotice();
+  $("crash-offer").hidden = info?.crashed_last_time !== true; // offered once: the marker is rewritten at launch
   renderNotice();
   render();
   renderSheet();
@@ -1498,6 +1594,7 @@ export const ui = {
   commitWorker,
   noticeShown,
   setNoticeVisible,
+  openFeedback,
 };
 
 // Dev self-check only: the harness is fetched only when app_info.self_check is

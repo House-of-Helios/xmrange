@@ -38,12 +38,13 @@ Settings, **network**, **show connections**. It lists what is connected now and 
 
 ## Problem reports
 
-XMRange never sends a crash or problem report by itself. From version 0.0.2, when something goes wrong, it offers one, and you decide.
+XMRange never sends a crash or problem report by itself. From version 0.0.2, when something goes wrong, it offers one, and you decide. The full walkthrough, with a before-and-after picture, is on [Problem reports](08-feedback.md).
 
 - **When:** settings, **send feedback**, at any time; or an offer at the next launch after XMRange closed unexpectedly. Close the sheet and nothing happens.
 - **What it holds:** the XMRange version, the macOS version, the kind of Mac (Apple silicon or Intel), the last error lines, and your note if you write one. Your wallet, IP address, computer name and folder paths are removed.
 - **You see all of it:** the whole report is on screen, and you can edit it, before anything happens.
 - **Where it goes:** **Copy** or **Save** keeps it with you. **Send** seals it so only House of Helios can read it, signs it with a key made for that one report, and sends it through Tor to the four Nostr relays in the table. They hold it 30 days. No account, no e-mail, no House server, and no one sees your IP address.
+- **Proof, with a real example:** [examples/report-input.txt](examples/report-input.txt) is a made-up Mac's raw lines, with a wallet address, two IP addresses, a home folder, a computer name and a worker name. [examples/report-sent.txt](examples/report-sent.txt) is the exact text XMRange would send for them. A test builds it from the code, and fails if the file is stale.
 
 ## How to report a problem
 

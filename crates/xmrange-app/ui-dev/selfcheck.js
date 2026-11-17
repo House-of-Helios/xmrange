@@ -2318,6 +2318,23 @@ async function sheetChecks(ui, checks, detail, info) {
     checks.network_log =
       nl.shown && nl.clip.length === 0 && nl.allowed.length >= 2 && nl.allowed.some((l) => l.startsWith("updates:")) &&
       !/\b\d{1,3}(\.\d{1,3}){3}\b/.test(nl.now + nl.allowed.join(" "));
+    // Feedback: the row, the sheet, its controls, and a report text that holds no address (send is never pressed).
+    await ui.openFeedback("problem");
+    await settle(800);
+    const fbText = document.getElementById("fb-text").value;
+    const fbKinds = [...document.querySelectorAll("#fb-kind [data-kind]")].filter((b) => !b.hidden).map((b) => b.dataset.kind);
+    const fb = { shown: dialogShown("feedback"), clip: dialogClipped("feedback"), kinds: fbKinds, textLen: fbText.length };
+    pressEsc();
+    await ui.openFeedback("crash");
+    await settle(300);
+    fb.crashKind = !document.querySelector('#fb-kind [data-kind="crash"]').hidden;
+    pressEsc();
+    d.feedback = fb;
+    checks.feedback =
+      !!document.getElementById("fb-open") && ["fb-copy", "fb-save", "fb-send", "fb-note", "feedback-close", "crash-send", "crash-dismiss"].every((id) => !!document.getElementById(id)) &&
+      fb.shown && fb.clip.length === 0 && fb.kinds.join() === "problem,idea" && fb.crashKind && fbText.startsWith("XMRange problem report") &&
+      !/\b\d{1,3}(\.\d{1,3}){3}\b/.test(fbText) && !/\/Users\//.test(fbText) &&
+      document.getElementById("crash-offer").hidden === true;
     // Limits: the temperature row always; the battery row hidden only on a desktop.
     const acRow = document.getElementById("set-ac-row");
     checks.limits_rows = !!document.getElementById("set-pause-above") && acRow.hidden === (ui.state.info?.form === "desktop");
@@ -2839,14 +2856,14 @@ async function controlSweepChecks(ui, checks, detail) {
   window.addEventListener("error", onErr);
   window.addEventListener("unhandledrejection", onErr);
   const SKIP = new Set(["run-primary", "run-stop", "trials-go", "wallet-clear"]);
-  const SKIP_IDS = new Set(["node-flag-copy", "price-confirm-ok", "update-pill"]);
+  const SKIP_IDS = new Set(["node-flag-copy", "price-confirm-ok", "update-pill", "fb-send"]);
   const clicked = [];
   const bad = [];
   const errLines = () => st.tape.filter((l) => l.tag === "error").map((l) => l.msg);
   const closeAll = async () => {
     for (let i = 0; i < 3; i++) pressEsc();
     ui.closeGuide();
-    for (const id of ["network-log", "price-confirm", "node-guide"]) {
+    for (const id of ["network-log", "price-confirm", "node-guide", "feedback"]) {
       const d = document.getElementById(id);
       if (d && !d.hidden) document.getElementById(`${id}-close`)?.click() ?? document.getElementById(`${id}-cancel`)?.click();
     }

@@ -14,8 +14,10 @@ REF="${1:-public}"
 git rev-parse -q --verify "$REF^{commit}" >/dev/null || { echo "no branch $REF"; exit 2; }
 ADDR='[48][0-9AB][1-9A-HJ-NP-Za-km-z]{93}'
 # Public addresses that upstream text carries: XMRig's donation address (in the patch's context
-# lines) and MoneroOcean's example address (in its docs). Matched by their ends, never printed.
-PUBLIC_ENDS=("48edfH:icoD" "89Txfr:nWHL")
+# lines) and MoneroOcean's example address (in its docs), plus the made-up address of the problem
+# report proof (report.rs `sample()`: the base58 alphabet in order, docs/site/examples/).
+# Matched by their ends, never printed.
+PUBLIC_ENDS=("48edfH:icoD" "89Txfr:nWHL" "412345:Zabc")
 public() { local a="$1" e; for e in "${PUBLIC_ENDS[@]}"; do [ "${a:0:6}" = "${e%%:*}" ] && [ "${a: -4}" = "${e##*:}" ] && return 0; done; return 1; }
 ME="$(id -un)"
 fail=0

@@ -79,11 +79,62 @@ fn replace_ci(s: &str, word: &str, with: &str) -> String {
 
 /// One line for the report: dropped if it carries an address; otherwise IPs redacted, the home
 /// folder shown as "~", and every private word replaced.
-pub fn scrub(line: &str, private: &[String], home: Option<&str>) -> Option<String> {
-    if has_address(line) {
-        return None;
+/// A wallet address in a line (a full one, or any masked form such as `mask_wallet`'s `47C4…hzPB`)
+/// becomes a visible "[wallet removed]", so the rest of the line survives. Fail-closed: ANY "…"
+/// with base58 characters directly on both sides is taken for a mask and removed with both runs.
+/// Only a "…" that is not glued between two base58 characters (a user's "it stalls… then") is
+/// kept, as "...", because `scrub` drops every line that still holds a "…".
+pub(crate) fn mark_addresses(line: &str) -> String {
+    const B58: &str = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+    let b58 = |c: Option<&char>| c.is_some_and(|c| B58.contains(*c));
+    let chars: Vec<char> = line.chars().collect();
+    let run_start = |mut k: usize| { while k > 0 && b58(chars.get(k - 1)) { k -= 1; } k };
+    let run_end = |mut k: usize| { while b58(chars.get(k)) { k += 1; } k };
+    // Spans to remove: masks (b58…b58) and full addresses (95 or 106 base58 chars starting 4 or 8).
+    let mut spans: Vec<(usize, usize)> = Vec::new();
+    for (k, &c) in chars.iter().enumerate() {
+        if c == '…' && k > 0 && b58(chars.get(k - 1)) && b58(chars.get(k + 1)) {
+            spans.push((run_start(k - 1), run_end(k + 1)));
+        }
     }
-    let mut s = crate::redact::redact_ips(line);
+    let mut k = 0;
+    while k < chars.len() {
+        if b58(chars.get(k)) && (k == 0 || !b58(chars.get(k - 1))) {
+            let e = run_end(k);
+            let n = e - k;
+            if (n == 95 || n == 106) && matches!(chars[k], '4' | '8') {
+                spans.push((k, e));
+            }
+            k = e;
+        } else {
+            k += 1;
+        }
+    }
+    spans.sort();
+    let mut out = String::new();
+    let mut k = 0;
+    for (a, b) in spans {
+        if b <= k {
+            continue;
+        }
+        for &c in &chars[k..a.max(k)] {
+            if c == '…' { out.push_str("..."); } else { out.push(c); }
+        }
+        out.push_str("[wallet removed]");
+        k = b;
+    }
+    for &c in &chars[k..] {
+        if c == '…' { out.push_str("..."); } else { out.push(c); }
+    }
+    out
+}
+
+pub fn scrub(line: &str, private: &[String], home: Option<&str>) -> Option<String> {
+    let line = mark_addresses(line);
+    if has_address(&line) {
+        return None; // safety net: nothing that looks like an address may pass
+    }
+    let mut s = crate::redact::redact_ips(&line);
     if let Some(h) = home.filter(|h| h.len() > 1) {
         s = s.replace(h, "~");
     }

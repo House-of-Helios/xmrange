@@ -22,6 +22,7 @@ pub mod orphan;
 pub mod paths;
 pub mod price;
 pub mod redact;
+pub mod report;
 pub mod secrets;
 pub mod settings;
 pub mod sidecar;

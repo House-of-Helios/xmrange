@@ -14,7 +14,7 @@
     version: "0.0.1", tagline: "hashes per watt · every watt, weighed", machine, max_threads: 10,
     low_power: false, low_power_supported: true, form: "laptop", price: null,
     wallet: { masked: dflt ? "47C4…zPB" : FAKE_MASK, is_default: dflt, label: dflt ? "default · ghostdrip dev wallet" : "your wallet" },
-    dev_build: false, self_check: false, self_check_live: false, startup_note: null,
+    crashed_last_time: S === "crash", dev_build: false, self_check: false, self_check_live: false, startup_note: null,
   };
   const pick5 = { setup: { threads: 5, e_core_clamp: false, utility: false }, low_power: false, hw: 220.53, hs: 3330 };
   const settings = {
@@ -69,6 +69,7 @@
     node_status: () => ({ state: "missing" }), payout_totals: () => ({ count: 0, atomic: 0 }), network_log: () => netLog,
     set_wallet: ({ address }) => ({ masked: FAKE_MASK, is_default: false, label: "your wallet" }),
     save_settings: () => null, copy_text: () => null,
+    report_text: () => window.__REPORT_TEXT || "",
   };
   const noop = () => null;
   window.__TAURI__ = {

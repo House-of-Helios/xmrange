@@ -1,0 +1,21 @@
+── note ──
+the hashrate fell after sleep.
+my wallet is
+4123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz123456789ABCDEFGHJKLMNPQRSTUVWXYZabc
+I am on 203.0.113.7 (2001:db8:85a3::8a2e:370:7334), computer Someones-MacBook-Pro.local
+
+── tape ──
+12:00:01 miner wallet 4123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz123456789ABCDEFGHJKLMNPQRSTUVWXYZabc
+12:00:02 net connected to 203.0.113.7:20004
+12:00:03 net tor circuit via 2001:db8:85a3::8a2e:370:7334
+12:00:04 miner worker someones-rig set on Someones-MacBook-Pro.local
+12:00:05 error could not read /Users/someone/Library/Application Support/XMRange/ledger.sqlite
+12:00:06 cpu accepted (41/0) diff 40000
+
+── by hour ──
+13:00:00 hour past hour · 1297 h/s · whole mac 24.1 w (53.8 h/w) · cpu 6.0 w (216.2 h/w)
+
+── from this Mac ──
+home folder /Users/someone
+computer name Someones-MacBook-Pro.local
+worker name someones-rig

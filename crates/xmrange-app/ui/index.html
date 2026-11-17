@@ -53,6 +53,13 @@
       <button class="notice__x" id="notice-dismiss" type="button" aria-label="dismiss this notice">×</button>
     </div>
 
+    <div class="notice" id="crash-offer" role="note" hidden>
+      <div class="notice__lines">
+        <p class="notice__line">xmrange closed unexpectedly last time · <button class="notice__use" id="crash-send" type="button">send report…</button></p>
+      </div>
+      <button class="notice__x" id="crash-dismiss" type="button" aria-label="dismiss">×</button>
+    </div>
+
     <section class="grid" id="grid" aria-live="off"></section>
   </main>
 
@@ -157,6 +164,10 @@
             <button class="btn btn--sm btn--quiet" id="diag-save" type="button">save as…</button>
           </div>
         </div>
+        <div class="sheet__row">
+          <span class="sheet__label">feedback</span>
+          <button class="btn btn--sm btn--quiet" id="fb-open" type="button" title="a report you read first; sent only when you press send, through tor">send feedback…</button>
+        </div>
       </div>
       <p class="sheet__err" id="sheet-err" role="alert" hidden></p>
       <p class="sheet__privacy" id="sheet-privacy">XMRange connects only to the pool that you select. It uses Tor unless you turn Tor off. MoneroOcean sees your wallet address, worker name and hashrate. It sees your IP address only when Tor is off. On p2pool, peers see your IP address only when Tor is off. Your payout address is public on the p2pool share chain.</p>
@@ -227,6 +238,36 @@
       <p class="sheet__body">This list shows counts and ports only. XMRange does not show or keep an address.</p>
       <div class="sheet__actions">
         <button class="btn btn--sm btn--quiet" id="network-log-close" type="button">close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet" id="feedback" role="dialog" aria-modal="true" aria-labelledby="feedback-title" hidden>
+    <div class="sheet__scrim" id="feedback-scrim"></div>
+    <div class="sheet__card">
+      <div class="sheet__head">
+        <img src="assets/emoji/hoh_logs.svg" alt="" />
+        <h2 class="sheet__title" id="feedback-title">feedback</h2>
+      </div>
+      <div class="sheet__row">
+        <span class="sheet__label">kind</span>
+        <div class="seg seg--small" id="fb-kind" role="group" aria-label="kind of report">
+          <button class="seg__btn" type="button" data-kind="problem" aria-pressed="true">problem</button>
+          <button class="seg__btn" type="button" data-kind="idea" aria-pressed="false">idea</button>
+          <button class="seg__btn" type="button" data-kind="crash" aria-pressed="false" hidden>crash</button>
+        </div>
+      </div>
+      <p class="sheet__label">your note</p>
+      <textarea class="fb__text fb__text--note" id="fb-note" rows="3" aria-label="your note" placeholder="what happened, or what you would like"></textarea>
+      <p class="sheet__label">the report, as it will be sent (you can edit it)</p>
+      <textarea class="fb__text" id="fb-text" rows="9" spellcheck="false" aria-label="the full report"></textarea>
+      <p class="sheet__body">The report holds no wallet, no IP address and no names. It is sealed for XMRange's key and sent to 4 Nostr relays through Tor, only when you press send.</p>
+      <p class="sheet__note fb__status" id="fb-status" role="status"></p>
+      <div class="sheet__actions">
+        <button class="btn btn--sm btn--quiet" id="feedback-close" type="button">close</button>
+        <button class="btn btn--sm btn--quiet" id="fb-copy" type="button">copy</button>
+        <button class="btn btn--sm btn--quiet" id="fb-save" type="button">save as…</button>
+        <button class="btn btn--sm" id="fb-send" type="button">send</button>
       </div>
     </div>
   </div>
