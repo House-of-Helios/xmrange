@@ -40,10 +40,10 @@ Settings, **network**, **show connections**. It lists what is connected now and 
 
 XMRange never sends a crash or problem report by itself. From version 0.0.2, when something goes wrong, it offers one, and you decide.
 
-- **What it holds:** the XMRange version, the macOS version, the kind of Mac (Apple silicon or Intel), the last error lines, and your note if you write one. Your wallet, IP address, computer name and folder paths are removed before you see it.
-- **When it goes:** only when you have read it and pressed **Send**. You can edit it, copy it, save it, or close it.
-- **How it travels:** sealed so only House of Helios can read it, signed by a key made for that one report, through Tor, to the Nostr relays in the table. The relays see a scrambled message from a Tor exit, and drop it after 30 days.
-- **Where it lands:** with House of Helios, to fix the problem. It is not shared.
+- **When:** settings, **send feedback**, at any time; or an offer at the next launch after XMRange closed unexpectedly. Close the sheet and nothing happens.
+- **What it holds:** the XMRange version, the macOS version, the kind of Mac (Apple silicon or Intel), the last error lines, and your note if you write one. Your wallet, IP address, computer name and folder paths are removed.
+- **You see all of it:** the whole report is on screen, and you can edit it, before anything happens.
+- **Where it goes:** **Copy** or **Save** keeps it with you. **Send** seals it so only House of Helios can read it, signs it with a key made for that one report, and sends it through Tor to the four Nostr relays in the table. They hold it 30 days. No account, no e-mail, no House server, and no one sees your IP address.
 
 ## How to report a problem
 
