@@ -421,6 +421,7 @@ fn stop_engine_for_exit(app: &AppHandle) {
     // Every engine is down, so no more trials: close the Ledger.
     let msg = close_ledger(&state.ledger);
     let _ = std::fs::remove_file(data_dir().join(RUNNING_MARKER));
+    let _ = std::fs::remove_file(data_dir().join(xmrange_core::report::CRASH_FILE));
     if let Some(msg) = msg {
         // Never println!: from the signal thread a closed pipe must not panic.
         let _ = std::io::Write::write_all(&mut std::io::stderr(), msg.as_bytes());
@@ -837,12 +838,17 @@ fn start_engine(app: AppHandle, state: &AppState, setup: Option<Setup>) -> Resul
         dev_log, ledger, optimizer, pool: settings.pool, chain: settings.p2pool_chain, node: settings.node, tor: settings.tor, guard: settings.guard,
     };
     let gen = state.engine_gen.fetch_add(1, Ordering::Relaxed) + 1;
+    let (ring_private, ring_home) = report_private(&settings);
+    xmrange_core::report::ring_scrubber(ring_private, ring_home);
     let (ctl, rx) = engine::spawn(cfg);
     *engine_guard = Some((gen, ctl));
     drop(engine_guard);
 
     thread::spawn(move || {
         for snap in rx {
+            for l in &snap.tape {
+                xmrange_core::report::ring_push(&format!("{} {} {}", l.ts, l.tag, l.msg));
+            }
             if let Some(p) = &snap.prefs {
                 save_prefs(&app.state::<AppState>(), p);
             }
@@ -1233,7 +1239,10 @@ async fn report_text(state: State<'_, AppState>, kind: String, note: String, tap
     }
     let (settings, chip, ledger) = report_inputs(&state);
     tauri::async_runtime::spawn_blocking(move || {
-        let (diag, private, home) = diagnostics_text(&settings, chip, ledger, &tape, &hours);
+        let (mut diag, private, home) = diagnostics_text(&settings, chip, ledger, &tape, &hours);
+        if kind == "crash" {
+            diag.push_str(&format!("\n{}", xmrange_core::report::before_the_crash(&data_dir())));
+        }
         let macos = std::process::Command::new("/usr/bin/sw_vers").arg("-productVersion").output().ok()
             .and_then(|o| String::from_utf8(o.stdout).ok()).map(|s| s.trim().to_string()).unwrap_or_else(|| "unknown".into());
         let arch = if cfg!(target_arch = "aarch64") { "apple silicon" } else { "intel" };
@@ -1241,6 +1250,12 @@ async fn report_text(state: State<'_, AppState>, kind: String, note: String, tap
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+/// The crash file has done its job (sent, closed or dismissed): delete it.
+#[tauri::command]
+fn discard_crash_file() {
+    let _ = std::fs::remove_file(data_dir().join(xmrange_core::report::CRASH_FILE));
 }
 
 /// Saves the (re-scrubbed) report text to the `.txt` file the user picked. Returns the file's name.
@@ -1798,6 +1813,8 @@ fn main() -> tauri::Result<()> {
     if !self_check_mode() {
         let _ = std::fs::create_dir_all(data_dir());
         let _ = std::fs::write(data_dir().join(RUNNING_MARKER), b"");
+        xmrange_core::report::tidy_crash(&data_dir(), crashed_last_time);
+        xmrange_core::report::install_crash_hook(data_dir(), env!("CARGO_PKG_VERSION"));
     }
     let settings = Settings::load(&data_dir());
     let opened = open_default();
@@ -1845,6 +1862,7 @@ fn main() -> tauri::Result<()> {
             node_status,
             save_diagnostics,
             report_text,
+            discard_crash_file,
             save_report,
             send_report,
             copy_text,

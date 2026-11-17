@@ -34,6 +34,7 @@ Settings, **network**, **show connections**. It lists what is connected now and 
 - **Your IP address** is not saved.
 - **Trial results** are in an encrypted database. Its key is a private file in the app's data folder, not the Keychain. XMRange keeps trials only, not a second-by-second history.
 - **Your wallet and worker name** are plain text in the settings file, since the pool sees them.
+- **A crash** leaves one scrubbed file, `last-crash.txt`, in the app's data folder. It is deleted once the report is sent, closed or dismissed, or after 7 days.
 - **Diagnostics** are off until you save one. **save as** writes a text report where you choose, with no wallet, no IPs and no names.
 
 ## Problem reports

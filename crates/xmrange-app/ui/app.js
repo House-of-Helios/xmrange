@@ -838,7 +838,7 @@ async function saveDiagnostics() {
 
 /** 📮 feedback (doctrine §1d): the report is built in Rust, shown whole and editable, and goes
  * out only when the user presses send. `edited` keeps their edits when the kind or note changes. */
-const feedback = { kind: "problem", edited: false, busy: false };
+const feedback = { kind: "problem", edited: false, busy: false, crash: false };
 
 function fbSay(text) {
   $("fb-status").textContent = text;
@@ -863,6 +863,7 @@ function fbKind(kind) {
 /** Opens the sheet; `kind` "crash" (from the crash offer) shows the crash choice. */
 export async function openFeedback(kind = "problem") {
   $("fb-kind").querySelector('[data-kind="crash"]').hidden = kind !== "crash";
+  feedback.crash = kind === "crash";
   fbKind(kind);
   $("fb-note").value = "";
   feedback.busy = false;
@@ -936,6 +937,10 @@ function closeDialog(id) {
   const el = $(id);
   if (el.hidden) return;
   el.hidden = true;
+  if (id === "feedback" && feedback.crash) {
+    feedback.crash = false;
+    invoke("discard_crash_file").catch(() => {}); // the crash file is deleted once its report is closed or sent
+  }
   const back = dialogReturnFocus[id];
   if (back && typeof back.focus === "function") back.focus();
   dialogReturnFocus[id] = null;
@@ -1452,7 +1457,10 @@ function wire() {
     $("crash-offer").hidden = true;
     openFeedback("crash");
   });
-  $("crash-dismiss").addEventListener("click", () => ($("crash-offer").hidden = true));
+  $("crash-dismiss").addEventListener("click", () => {
+    $("crash-offer").hidden = true;
+    invoke("discard_crash_file").catch(() => {});
+  });
   $("set-tor").addEventListener("click", (e) => {
     const b = e.target.closest("[data-tor]");
     if (b) setTor(b.dataset.tor === "on");

@@ -68,6 +68,114 @@ fn cap(mut lines: Vec<String>) -> String {
     out
 }
 
+// ── the crash file (doctrine §1d): one scrubbed file, written only by a panic ──────────────
+
+/// The one file a crash leaves in the data folder. Deleted once the report is sent or dismissed, or after 7 days.
+pub const CRASH_FILE: &str = "last-crash.txt";
+const CRASH_MAX: usize = 16 * 1024;
+const RING_MAX: usize = 200;
+const CRASH_DAYS: u64 = 7;
+pub const NO_CRASH_DETAILS: &str = "no crash details: XMRange was stopped without a panic (force quit, power loss, or the system ended it)";
+
+/// The last engine tape lines, already scrubbed, plus the words that scrubbing uses.
+struct Ring {
+    lines: std::collections::VecDeque<String>,
+    private: Vec<String>,
+    home: Option<String>,
+}
+static RING: std::sync::Mutex<Ring> = std::sync::Mutex::new(Ring { lines: std::collections::VecDeque::new(), private: Vec::new(), home: None });
+
+/// Sets the private words and home folder the ring scrubs with (called when an engine starts).
+pub fn ring_scrubber(private: Vec<String>, home: Option<String>) {
+    let mut r = RING.lock().unwrap_or_else(|e| e.into_inner());
+    r.private = private;
+    r.home = home;
+}
+
+/// Keeps one engine tape line, scrubbed, in memory only; the oldest beyond 200 fall off.
+pub fn ring_push(line: &str) {
+    let mut r = RING.lock().unwrap_or_else(|e| e.into_inner());
+    let kept = clean(line, &r.private, r.home.as_deref());
+    r.lines.push_back(kept.trim_end().to_string());
+    while r.lines.len() > RING_MAX {
+        r.lines.pop_front();
+    }
+}
+
+/// The crash file's text: header, then the newest ring lines that fit, everything scrubbed, at most 16 KB.
+pub fn crash_text(version: &str, message: &str, thread: &str, location: &str, lines: &[String], private: &[String], home: Option<&str>) -> String {
+    let head = clean(&format!("XMRange crash\nversion {version}\nthread {thread}\nat {location}\npanic {message}\n── last tape lines ──\n"), private, home);
+    let mut kept: Vec<&String> = Vec::new();
+    let mut size = head.len();
+    for l in lines.iter().rev() {
+        if size + l.len() + 1 > CRASH_MAX {
+            break;
+        }
+        size += l.len() + 1;
+        kept.push(l);
+    }
+    let mut out = head;
+    for l in kept.iter().rev() {
+        out.push_str(l);
+        out.push('\n');
+    }
+    // Scrubbed again whole (the ring's lines already were): the file never relies on one pass.
+    let mut out = clean(&out, private, home);
+    let mut cut = CRASH_MAX.min(out.len());
+    while !out.is_char_boundary(cut) {
+        cut -= 1;
+    }
+    out.truncate(cut);
+    out
+}
+
+/// Writes `text` to `dir/last-crash.txt` (0600) through a temp file and a rename.
+pub fn write_crash(dir: &std::path::Path, text: &str) -> std::io::Result<()> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+    let tmp = dir.join(format!("{CRASH_FILE}.tmp"));
+    let mut f = std::fs::OpenOptions::new().write(true).create(true).truncate(true).mode(0o600).open(&tmp)?;
+    f.write_all(text.as_bytes())?;
+    drop(f);
+    std::fs::rename(tmp, dir.join(CRASH_FILE))
+}
+
+/// Installs, once, a panic hook that writes the crash file and then runs the hook that was there.
+pub fn install_crash_hook(dir: std::path::PathBuf, version: &'static str) {
+    let prev = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let message = match info.payload().downcast_ref::<&str>() {
+            Some(s) => s.to_string(),
+            None => info.payload().downcast_ref::<String>().cloned().unwrap_or_default(),
+        };
+        let location = info.location().map(|l| format!("{}:{}", l.file(), l.line())).unwrap_or_default();
+        let thread = std::thread::current().name().unwrap_or("unnamed").to_string();
+        // try_lock: a panic while the ring is locked must not hang the hook.
+        let (lines, private, home) = match RING.try_lock() {
+            Ok(r) => (r.lines.iter().cloned().collect::<Vec<_>>(), r.private.clone(), r.home.clone()),
+            Err(_) => (Vec::new(), Vec::new(), std::env::var("HOME").ok()),
+        };
+        let _ = write_crash(&dir, &crash_text(version, &message, &thread, &location, &lines, &private, home.as_deref()));
+        prev(info);
+    }));
+}
+
+/// At launch: a crash file is kept only when the last run really ended in a crash and it is under 7 days old.
+pub fn tidy_crash(dir: &std::path::Path, crashed: bool) {
+    let path = dir.join(CRASH_FILE);
+    let old = std::fs::metadata(&path).and_then(|m| m.modified()).ok()
+        .and_then(|t| t.elapsed().ok()).is_none_or(|e| e.as_secs() > CRASH_DAYS * 86_400);
+    if !crashed || old {
+        let _ = std::fs::remove_file(path);
+    }
+}
+
+/// The "before the crash" section of a crash report: the file's text, or why there is none.
+pub fn before_the_crash(dir: &std::path::Path) -> String {
+    let text = std::fs::read_to_string(dir.join(CRASH_FILE)).unwrap_or_else(|_| NO_CRASH_DETAILS.to_string());
+    format!("── before the crash ──\n{}\n", text.trim_end())
+}
+
 /// The documented sample (docs/site/examples): fixed inputs that deliberately carry a wallet, IPs,
 /// a home path, a computer name and a worker name, run through the real report pipeline. Returns
 /// (the raw lines as the app saw them, the exact text house-report would receive). A test keeps
@@ -160,5 +268,37 @@ mod tests {
             assert!(!sent.contains(bad), "{bad} survived: {sent}");
         }
         assert!(input.contains("203.0.113.7") && input.contains("/Users/someone"), "the input really carries them");
+    }
+
+    #[test]
+    fn the_crash_file_holds_no_wallet_ip_or_home_and_stays_small() {
+        let wallet = format!("4{}", "A1b2".repeat(24).chars().take(94).collect::<String>());
+        let lines: Vec<String> = (0..400).map(|i| format!("12:00:{i:02} net via 203.0.113.7 {wallet} /Users/someone/x padding padding padding padding")).collect();
+        let text = crash_text("0.0.1", &format!("bad {wallet} at 203.0.113.7 in /Users/someone/Library"), "main", "/Users/someone/src/a.rs:9", &lines, &["someone".into()], Some("/Users/someone"));
+        let dir = std::env::temp_dir().join(format!("xmr-crash-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        write_crash(&dir, &text).unwrap();
+        let back = std::fs::read_to_string(dir.join(CRASH_FILE)).unwrap();
+        for bad in [&wallet[..12], "203.0.113.7", "someone", "/Users/"] {
+            assert!(!back.contains(bad), "{bad} survived: {back}");
+        }
+        assert!(back.len() <= 16 * 1024 && back.contains("[wallet removed]") && back.contains("panic bad"));
+        assert!(back.contains("12:00:99") || back.contains("12:00:"), "newest lines kept");
+        assert!(before_the_crash(&dir).starts_with("── before the crash ──\nXMRange crash"));
+        tidy_crash(&dir, false);
+        assert!(!dir.join(CRASH_FILE).exists());
+        assert!(before_the_crash(&dir).contains(NO_CRASH_DETAILS));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_ring_is_bounded_and_scrubbed() {
+        ring_scrubber(vec!["someone".into()], Some("/Users/someone".into()));
+        for i in 0..300 {
+            ring_push(&format!("t{i} 203.0.113.7 someone"));
+        }
+        let r = RING.lock().unwrap();
+        assert_eq!(r.lines.len(), 200);
+        assert!(r.lines.back().unwrap().starts_with("t299") && !r.lines.iter().any(|l| l.contains("203.0.113.7") || l.contains("someone")));
     }
 }

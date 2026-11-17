@@ -70,6 +70,7 @@
     set_wallet: ({ address }) => ({ masked: FAKE_MASK, is_default: false, label: "your wallet" }),
     save_settings: () => null, copy_text: () => null,
     report_text: () => window.__REPORT_TEXT || "",
+    discard_crash_file: () => null,
   };
   const noop = () => null;
   window.__TAURI__ = {

@@ -14,6 +14,8 @@ Something wrong, or an idea? XMRange can write the report for you, show you ever
 3. Read the report. Change or delete anything you like.
 4. Press **send**, or **copy** or **save as…** to pass it on yourself. **close** sends nothing.
 
+If XMRange stopped on a panic, it keeps one scrubbed file, `last-crash.txt`, in its data folder, so the crash report can show what happened just before. XMRange deletes the file once the report is sent, closed or dismissed, or after 7 days.
+
 ## What a report holds
 
 The XMRange and macOS versions, the kind of Mac (Apple silicon or Intel), the chip and model, the pool and whether Tor is on, how many cores are running, your cost inputs, the number of trials, the last lines of the log, the hourly figures, and your note.
