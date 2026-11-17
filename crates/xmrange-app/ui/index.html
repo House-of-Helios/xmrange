@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en" data-theme="system">
+<head>
+  <meta charset="utf-8" />
+  <title>XMRange</title>
+  <meta name="description" content="hashes per watt · every watt, weighed" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="board" id="board" data-tauri-drag-region>
+    <div class="corner corner--left">
+      <button class="round-btn update-btn" id="update-pill" type="button" hidden></button>
+    </div>
+    <div class="corner">
+      <button class="round-btn theme-btn" id="theme-btn" type="button" aria-label="toggle light and dark">
+        <img class="mode-light" src="assets/emoji/hoh_mode_light.svg" alt="" />
+        <img class="mode-dark" src="assets/emoji/hoh_mode_dark.svg" alt="" />
+      </button>
+      <button class="round-btn gear-btn" id="gear-btn" type="button" aria-label="settings" aria-haspopup="dialog">
+        <img src="assets/emoji/gear.svg" alt="" />
+      </button>
+    </div>
+
+    <header class="brand" data-tauri-drag-region>
+      <img class="brand__icon" src="assets/icon.png" alt="XMRange" />
+      <div class="brand__words" data-tauri-drag-region>
+        <h1 class="wordmark">XMRange</h1>
+      </div>
+    </header>
+
+    <nav class="seg seg--pool" id="pools" aria-label="pool">
+      <button class="seg__btn is-on" type="button" data-pool="mo" aria-pressed="true">moneroocean</button>
+      <button class="seg__btn" type="button" data-pool="p2" aria-pressed="false">p2pool</button>
+    </nav>
+
+    <div class="statusrow" data-tauri-drag-region>
+      <span class="statusrow__start" aria-hidden="true"></span>
+      <nav class="tabs" id="tabs" aria-label="sections">
+        <button class="tab is-on" type="button" data-tab="mining" aria-pressed="true">mining</button>
+        <span class="tabs__sep" aria-hidden="true">|</span>
+        <button class="tab" type="button" data-tab="machine" aria-pressed="false">machine</button>
+        <span class="tabs__sep" aria-hidden="true">|</span>
+        <button class="tab" type="button" data-tab="tuning" aria-pressed="false">tuning</button>
+      </nav>
+      <div class="statusrow__end"></div>
+    </div>
+
+    <div class="notice" id="notice" role="note" hidden>
+      <div class="notice__lines">
+        <p class="notice__line" id="notice-pool">Your pool sees your wallet address, the worker name you typed and your hashrate. Tor is on, so it sees a Tor exit, not your IP address. Nothing else leaves this Mac.</p>
+        <p class="notice__line" id="notice-wallet">Mining pays the default wallet (GhostDrip dev wallet) until you add yours: <button class="notice__use" id="notice-use" type="button">use yours →</button> on the wallet card.</p>
+      </div>
+      <button class="notice__x" id="notice-dismiss" type="button" aria-label="dismiss this notice">×</button>
+    </div>
+
+    <section class="grid" id="grid" aria-live="off"></section>
+  </main>
+
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
+    <div class="sheet__scrim" id="sheet-scrim"></div>
+    <div class="sheet__card">
+      <div class="sheet__head">
+        <img src="assets/emoji/gear.svg" alt="" />
+        <h2 class="sheet__title" id="sheet-title">settings</h2>
+      </div>
+      <div class="sheet__rows">
+        <div class="sheet__row">
+          <span class="sheet__label" id="set-rate-label">electricity</span>
+          <div class="sheet__ctl rate">
+            <input class="sheet__currency" id="set-currency" type="text" maxlength="3" spellcheck="false" autocomplete="off" aria-label="currency symbol, 1 to 3 characters" />
+            <input class="rate__input" id="set-rate" type="number" step="0.01" min="0" aria-label="electricity rate per kilowatt hour" />
+            <span>/kwh</span>
+          </div>
+        </div>
+        <div class="sheet__row">
+          <span class="sheet__label">theme</span>
+          <div class="seg seg--small" id="set-theme" role="group" aria-label="theme">
+            <button class="seg__btn" type="button" data-theme-pick="system" aria-pressed="false">system</button>
+            <button class="seg__btn" type="button" data-theme-pick="light" aria-pressed="false">light</button>
+            <button class="seg__btn" type="button" data-theme-pick="dark" aria-pressed="false">dark</button>
+          </div>
+        </div>
+        <div class="sheet__row">
+          <span class="sheet__label">watts counted</span>
+          <div class="seg seg--small" id="set-measure" role="group" aria-label="h/w counts">
+            <button class="seg__btn" type="button" data-measure="sys" aria-pressed="false">whole mac</button>
+            <button class="seg__btn" type="button" data-measure="cpu" aria-pressed="false">cpu only</button>
+          </div>
+        </div>
+        <div class="sheet__row">
+          <span class="sheet__label">tor</span>
+          <div class="seg seg--small" id="set-tor" role="group" aria-label="route through tor">
+            <button class="seg__btn" type="button" data-tor="off" aria-pressed="false">direct</button>
+            <button class="seg__btn" type="button" data-tor="on" aria-pressed="false">through tor</button>
+          </div>
+        </div>
+        <div class="sheet__row">
+          <span class="sheet__label">p2pool chain</span>
+          <div class="seg seg--small" id="set-chain" role="group" aria-label="p2pool share chain">
+            <button class="seg__btn" type="button" data-chain="nano" aria-pressed="false" title="small shares, found often: best for one mac">nano</button>
+            <button class="seg__btn" type="button" data-chain="mini" aria-pressed="false" title="larger shares, found less often">mini</button>
+            <button class="seg__btn" type="button" data-chain="main" aria-pressed="false" title="the largest shares, for many kh/s">main</button>
+          </div>
+        </div>
+        <div class="sheet__row">
+          <span class="sheet__label">monero node</span>
+          <div class="seg seg--small" id="set-node" role="group" aria-label="which monero node p2pool uses">
+            <button class="seg__btn" type="button" data-node="gui" aria-pressed="false" title="the local node of the monero gui on this mac">monero gui</button>
+            <button class="seg__btn" type="button" data-node="own" aria-pressed="false" title="xmrange runs its own node while p2pool is selected">xmrange</button>
+          </div>
+        </div>
+        <div class="sheet__row" id="node-folder-row" hidden>
+          <span class="sheet__label">chain folder</span>
+          <div class="update-folder">
+            <span class="update-folder__name" id="node-folder-name" title="">none</span>
+            <button class="btn btn--sm btn--quiet" id="node-folder-choose" type="button">choose folder…</button>
+          </div>
+        </div>
+        <div class="sheet__row">
+          <span class="sheet__label">xmr price</span>
+          <div class="sheet__ctl rate price">
+            <span id="set-price-cur">$</span>
+            <input class="rate__input price__input" id="set-price" type="number" step="0.01" min="0" aria-label="xmr price" />
+            <div class="seg seg--small" id="set-price-feed" role="group" aria-label="xmr price source">
+              <button class="seg__btn" type="button" data-feed="off" aria-pressed="false">typed</button>
+              <button class="seg__btn" type="button" data-feed="on" aria-pressed="false">fetch</button>
+            </div>
+          </div>
+        </div>
+        <p class="sheet__note price__note" id="set-price-note"></p>
+        <div class="sheet__row">
+          <span class="sheet__label">pause above</span>
+          <div class="sheet__ctl rate">
+            <input class="rate__input" id="set-pause-above" type="number" step="1" min="100" max="230" placeholder="off" aria-label="pause mining above this cpu temperature, in degrees fahrenheit" />
+            <span>°f</span>
+          </div>
+        </div>
+        <div class="sheet__row" id="set-ac-row">
+          <span class="sheet__label">mine on</span>
+          <div class="seg seg--small" id="set-ac" role="group" aria-label="mine on battery or only on the power adapter">
+            <button class="seg__btn" type="button" data-ac="off" aria-pressed="false">battery too</button>
+            <button class="seg__btn" type="button" data-ac="on" aria-pressed="false">adapter only</button>
+          </div>
+        </div>
+        <div class="sheet__row">
+          <span class="sheet__label">network</span>
+          <button class="btn btn--sm btn--quiet" id="set-network" type="button">show connections</button>
+        </div>
+        <div class="sheet__row">
+          <span class="sheet__label">wallet</span>
+          <span class="sheet__note" id="set-wallet-note"></span>
+        </div>
+        <div class="sheet__row">
+          <span class="sheet__label">diagnostics</span>
+          <div class="update-folder">
+            <span class="update-folder__name" id="diag-note" title="a text report you save where you choose: no wallet, no IPs, no names">scrubbed</span>
+            <button class="btn btn--sm btn--quiet" id="diag-save" type="button">save as…</button>
+          </div>
+        </div>
+      </div>
+      <p class="sheet__err" id="sheet-err" role="alert" hidden></p>
+      <p class="sheet__privacy" id="sheet-privacy">XMRange connects only to the pool that you select. It uses Tor unless you turn Tor off. MoneroOcean sees your wallet address, worker name and hashrate. It sees your IP address only when Tor is off. On p2pool, peers see your IP address only when Tor is off. Your payout address is public on the p2pool share chain.</p>
+      <div class="sheet__actions">
+        <button class="btn btn--sm btn--quiet sheet__close" id="sheet-close" type="button">close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet" id="guide" role="dialog" aria-modal="true" aria-labelledby="guide-title" hidden>
+    <div class="sheet__scrim" id="guide-scrim"></div>
+    <div class="sheet__card sheet__card--small">
+      <div class="sheet__head">
+        <img src="assets/emoji/hoh_low_power.svg" alt="" />
+        <h2 class="sheet__title" id="guide-title">low power mode</h2>
+      </div>
+      <p class="sheet__body" id="guide-why"></p>
+      <div class="sheet__row">
+        <button class="btn btn--sm" id="guide-open-settings" type="button">open battery settings</button>
+        <span class="chip" id="guide-detected" hidden>✓ detected</span>
+      </div>
+      <ol class="sheet__body" id="guide-steps">
+        <li>Open Battery settings (button above).</li>
+        <li>Select Low Power Mode.</li>
+        <li>Choose Always or Only on Power Adapter.</li>
+      </ol>
+      <div class="sheet__actions">
+        <button class="btn btn--sm btn--quiet" id="guide-close" type="button">close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet" id="node-guide" role="dialog" aria-modal="true" aria-labelledby="node-guide-title" hidden>
+    <div class="sheet__scrim" id="node-guide-scrim"></div>
+    <div class="sheet__card sheet__card--small">
+      <div class="sheet__head">
+        <img src="assets/emoji/file_cabinet.svg" alt="" />
+        <h2 class="sheet__title" id="node-guide-title">your monero node</h2>
+      </div>
+      <p class="sheet__body">p2pool needs a monero node on this mac. You can use the node of the Monero GUI (the steps below). Or XMRange can run its own node: in settings, set monero node to xmrange, then choose a chain folder. An external drive is fine. The first sync takes one day or more.</p>
+      <div class="sheet__row">
+        <span class="chip" id="node-guide-ready" hidden>✓ ready</span>
+      </div>
+      <ol class="sheet__body">
+        <li>Open the Monero GUI. In Settings → Node, choose Local node.</li>
+        <li>In Daemon startup flags, add this flag:
+          <span class="copyline"><code id="node-flag">--zmq-pub tcp://127.0.0.1:18083</code><button class="btn btn--sm btn--quiet" id="node-flag-copy" type="button">copy</button></span>
+        </li>
+        <li>Start the node. Let it sync. XMRange checks the node every 10 s.</li>
+      </ol>
+      <div class="sheet__actions">
+        <button class="btn btn--sm btn--quiet" id="node-guide-close" type="button">close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet" id="network-log" role="dialog" aria-modal="true" aria-labelledby="network-log-title" hidden>
+    <div class="sheet__scrim" id="network-log-scrim"></div>
+    <div class="sheet__card sheet__card--small">
+      <div class="sheet__head">
+        <img src="assets/emoji/satellite_antenna.svg" alt="" />
+        <h2 class="sheet__title" id="network-log-title">network</h2>
+      </div>
+      <p class="sheet__label">connected now</p>
+      <ul class="netlog" id="network-now"></ul>
+      <p class="sheet__label">allowed in this setup</p>
+      <ul class="netlog" id="network-allowed"></ul>
+      <p class="sheet__body">This list shows counts and ports only. XMRange does not show or keep an address.</p>
+      <div class="sheet__actions">
+        <button class="btn btn--sm btn--quiet" id="network-log-close" type="button">close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet" id="price-confirm" role="dialog" aria-modal="true" aria-labelledby="price-confirm-title" hidden>
+    <div class="sheet__scrim" id="price-confirm-scrim"></div>
+    <div class="sheet__card sheet__card--small">
+      <div class="sheet__head">
+        <img src="assets/emoji/money_bag.svg" alt="" />
+        <h2 class="sheet__title" id="price-confirm-title">fetch the xmr price?</h2>
+      </div>
+      <p class="sheet__body">Each hour, XMRange gets the XMR price in US dollars from Kraken. If Kraken fails, it uses Yahoo Finance. It always connects through Tor.</p>
+      <p class="sheet__body">Kraken and Yahoo see a Tor exit, not your IP address. They get no data about your wallet or mining. This adds one connection to the Tor network, also when you mine directly.</p>
+      <div class="sheet__actions">
+        <button class="btn btn--sm btn--quiet" id="price-confirm-cancel" type="button">cancel</button>
+        <button class="btn btn--sm" id="price-confirm-ok" type="button">fetch through tor</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

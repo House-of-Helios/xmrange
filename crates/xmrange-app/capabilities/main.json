@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "XMRange main window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default", "core:window:allow-start-dragging",
+    "allow-ping", "allow-self-check-report", "allow-app-info", "allow-get-settings", "allow-save-settings",
+    "allow-start-mining", "allow-stop-mining", "allow-pause-mining", "allow-resume-mining",
+    "allow-set-threads", "allow-set-worker", "allow-set-wallet", "allow-clear-wallet", "allow-list-trials", "allow-clear-trials", "allow-start-trials", "allow-node-status", "allow-save-diagnostics", "allow-copy-text", "allow-payout-totals", "allow-network-log", "allow-apply-pick", "dialog:allow-ask",
+    "allow-set-profile", "allow-seek", "allow-stop-seek", "allow-skip-low-power",
+    "allow-open-battery-settings", "allow-set-node-folder", "allow-update-status", "allow-install-update",
+    "dialog:allow-open", "dialog:allow-save"
+  ]
+}

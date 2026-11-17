@@ -1,0 +1,22 @@
+[package]
+name = "xmrange-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+dev-diagnostics = []
+
+[dependencies]
+anyhow = "1"
+getrandom = "0.2"
+libc = "0.2"
+macmon = { version = "0.8.2", default-features = false }
+# The Ledger: SQLCipher compiled from the crate's bundled source, on Apple CommonCrypto (no OpenSSL).
+rusqlite = { version = "0.37", features = ["bundled-sqlcipher"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha3 = "0.10"
+ring = "0.17"
+ureq = { version = "2", features = ["json", "socks-proxy"] }

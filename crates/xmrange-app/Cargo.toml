@@ -1,0 +1,32 @@
+[package]
+name = "xmrange-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+dev-diagnostics = ["xmrange-core/dev-diagnostics"]
+
+[build-dependencies]
+tauri-build = { version = "2.6", features = [] }
+
+[dependencies]
+ctrlc = { version = "3", features = ["termination"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# custom-protocol: Tauri's production mode. Without it Tauri assumes a development build and embeds
+# the repo path of tauri.conf.json (its "config parent"), which the release privacy check refuses.
+# The frontend is embedded either way; there is no dev server.
+tauri = { version = "2.11", features = ["custom-protocol"] }
+# The update folder's own native macOS folder picker (the settings sheet); the open panel it shows
+# grants access to whatever the user picks, with no TCC prompt.
+tauri-plugin-dialog = "2"
+xmrange-core = { path = "../xmrange-core" }
+
+# macOS only: hide the window's traffic lights while it isn't key (main.rs, traffic_lights).
+# Both crates are already in the tree through Tauri (tao / wry) with these features on, so this
+# adds no new crate to the build.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSResponder", "NSView", "NSControl", "NSButton", "NSWindow"] }

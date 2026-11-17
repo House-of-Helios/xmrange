@@ -1,0 +1,201 @@
+diff --git a/src/backend/cpu/CpuConfig.cpp b/src/backend/cpu/CpuConfig.cpp
+index a7d5db5..41a2145 100644
+--- a/src/backend/cpu/CpuConfig.cpp
++++ b/src/backend/cpu/CpuConfig.cpp
+@@ -16,6 +16,7 @@
+  *   along with this program. If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++#include <cstring>
+ #include "backend/cpu/CpuConfig.h"
+ #include "3rdparty/rapidjson/document.h"
+ #include "backend/cpu/CpuConfig_gen.h"
+@@ -36,6 +37,7 @@ const char *CpuConfig::kMaxThreadsHint      = "max-threads-hint";
+ const char *CpuConfig::kMemoryPool          = "memory-pool";
+ const char *CpuConfig::kPriority            = "priority";
+ const char *CpuConfig::kYield               = "yield";
++const char *CpuConfig::kQos                 = "qos";
+ 
+ #ifdef XMRIG_FEATURE_ASM
+ const char *CpuConfig::kAsm                 = "asm";
+@@ -71,6 +73,9 @@ rapidjson::Value xmrig::CpuConfig::toJSON(rapidjson::Document &doc) const
+     obj.AddMember(StringRef(kPriority),     priority() != -1 ? Value(priority()) : Value(kNullType), allocator);
+     obj.AddMember(StringRef(kMemoryPool),   m_memoryPool < 1 ? Value(m_memoryPool < 0) : Value(m_memoryPool), allocator);
+     obj.AddMember(StringRef(kYield),        m_yield, allocator);
++    if (m_utility) {
++        obj.AddMember(StringRef(kQos),      "utility", allocator);
++    }
+ 
+     if (m_threads.isEmpty()) {
+         obj.AddMember(StringRef(kMaxThreadsHint), m_limit, allocator);
+@@ -134,6 +139,9 @@ void xmrig::CpuConfig::read(const rapidjson::Value &value)
+         m_hugePagesJit = Json::getBool(value, kHugePagesJit, m_hugePagesJit);
+         m_limit        = Json::getUint(value, kMaxThreadsHint, m_limit);
+         m_yield        = Json::getBool(value, kYield, m_yield);
++        // XMRange patch: "qos": "utility" runs the mining threads at utility QoS (macOS).
++        const char *qos = Json::getString(value, kQos, nullptr);
++        m_utility      = qos != nullptr && strcmp(qos, "utility") == 0;
+ 
+         setAesMode(Json::getValue(value, kHwAes));
+         setHugePages(Json::getValue(value, kHugePages));
+diff --git a/src/backend/cpu/CpuConfig.h b/src/backend/cpu/CpuConfig.h
+index 4342ad8..0e069ad 100644
+--- a/src/backend/cpu/CpuConfig.h
++++ b/src/backend/cpu/CpuConfig.h
+@@ -47,6 +47,7 @@ public:
+     static const char *kMemoryPool;
+     static const char *kPriority;
+     static const char *kYield;
++    static const char *kQos;
+ 
+ #   ifdef XMRIG_FEATURE_ASM
+     static const char *kAsm;
+@@ -69,6 +70,7 @@ public:
+     inline bool isHugePagesJit() const                  { return m_hugePagesJit; }
+     inline bool isShouldSave() const                    { return m_shouldSave; }
+     inline bool isYield() const                         { return m_yield; }
++    inline bool isUtility() const                       { return m_utility; }
+     inline const Assembly &assembly() const             { return m_assembly; }
+     inline const String &argon2Impl() const             { return m_argon2Impl; }
+     inline const Threads<CpuThreads> &threads() const   { return m_threads; }
+@@ -93,6 +95,7 @@ private:
+     bool m_hugePagesJit     = false;
+     bool m_shouldSave       = false;
+     bool m_yield            = true;
++    bool m_utility          = false;   // XMRange patch: "qos": "utility"
+     int m_memoryPool        = 0;
+     int m_priority          = -1;
+     size_t m_hugePageSize   = kDefaultHugePageSizeKb;
+diff --git a/src/backend/cpu/CpuLaunchData.cpp b/src/backend/cpu/CpuLaunchData.cpp
+index 7d3b08f..6fb4788 100644
+--- a/src/backend/cpu/CpuLaunchData.cpp
++++ b/src/backend/cpu/CpuLaunchData.cpp
+@@ -38,6 +38,7 @@ xmrig::CpuLaunchData::CpuLaunchData(const Miner *miner, const Algorithm &algorit
+     hugePages(config.isHugePages()),
+     hwAES(config.isHwAES()),
+     yield(config.isYield()),
++    utility(config.isUtility()),
+     priority(config.priority()),
+     affinity(thread.affinity()),
+     miner(miner),
+@@ -57,6 +58,8 @@ bool xmrig::CpuLaunchData::isEqual(const CpuLaunchData &other) const
+             && intensity        == other.intensity
+             && priority         == other.priority
+             && affinity         == other.affinity
++            && yield            == other.yield      // XMRange patch: a yield-only reload restarts the workers
++            && utility          == other.utility    // XMRange patch: so does a QoS-only one
+             );
+ }
+ 
+diff --git a/src/backend/cpu/CpuLaunchData.h b/src/backend/cpu/CpuLaunchData.h
+index 9742a1b..44f00f7 100644
+--- a/src/backend/cpu/CpuLaunchData.h
++++ b/src/backend/cpu/CpuLaunchData.h
+@@ -61,6 +61,7 @@ public:
+     const bool hugePages;
+     const bool hwAES;
+     const bool yield;
++    const bool utility;     // XMRange patch: mining threads at utility QoS
+     const int priority;
+     const int64_t affinity;
+     const Miner *miner;
+diff --git a/src/backend/cpu/CpuWorker.cpp b/src/backend/cpu/CpuWorker.cpp
+index 8bcfa11..41e32bc 100644
+--- a/src/backend/cpu/CpuWorker.cpp
++++ b/src/backend/cpu/CpuWorker.cpp
+@@ -16,6 +16,10 @@
+  *   along with this program. If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++#ifdef XMRIG_OS_APPLE
++#   include <pthread.h>
++#   include <pthread/qos.h>
++#endif
+ #include <cassert>
+ #include <thread>
+ #include <mutex>
+@@ -79,6 +83,14 @@ xmrig::CpuWorker<N>::CpuWorker(size_t id, const CpuLaunchData &data) :
+     m_threads(data.threads),
+     m_ctx()
+ {
++#   ifdef XMRIG_OS_APPLE
++    // XMRange patch: the worker's own thread (it mines here after construction) drops to utility
++    // QoS when asked: lower clocks and politer to other apps, like `taskpolicy -c utility`, but
++    // switchable live by an API reload.
++    if (data.utility) {
++        pthread_set_qos_class_self_np(QOS_CLASS_UTILITY, 0);
++    }
++#   endif
+ #   ifdef XMRIG_ALGO_CN_HEAVY
+     // cn-heavy optimization for Zen3 CPUs
+     const auto arch = Cpu::info()->arch();
+diff --git a/src/base/kernel/Base.cpp b/src/base/kernel/Base.cpp
+index 4aa2e46..761c450 100644
+--- a/src/base/kernel/Base.cpp
++++ b/src/base/kernel/Base.cpp
+@@ -265,7 +265,8 @@ bool xmrig::Base::reload(const rapidjson::Value &json)
+         return false;
+     }
+ 
+-    const bool saved = config->save();
++    // XMRange privacy patch: API reloads apply in memory only; never write the config (wallet) to disk unless autosave is on.
++    const bool saved = config->isAutoSave() && config->save();
+ 
+     if (config->isWatch() && d_ptr->watcher && saved) {
+         delete config;
+diff --git a/src/config.json b/src/config.json
+index f7d52d3..576874a 100644
+--- a/src/config.json
++++ b/src/config.json
+@@ -58,7 +58,7 @@
+         "panthera": false,
+         "astrobwt": false
+     },
+-    "donate-level": 1,
++    "donate-level": 0,
+     "donate-over-proxy": 1,
+     "log-file": null,
+     "pools": [
+diff --git a/src/core/config/Config_default.h b/src/core/config/Config_default.h
+index ec09803..e50f838 100644
+--- a/src/core/config/Config_default.h
++++ b/src/core/config/Config_default.h
+@@ -85,7 +85,7 @@ R"===(
+         "cn/0": false,
+         "cn-lite/0": false
+     },
+-    "donate-level": 1,
++    "donate-level": 0,
+     "donate-over-proxy": 1,
+     "log-file": null,
+     "pools": [
+diff --git a/src/donate.h b/src/donate.h
+index 206b1b8..14cdf9e 100644
+--- a/src/donate.h
++++ b/src/donate.h
+@@ -37,8 +37,8 @@
+  * If you plan on changing donations to 0%, please consider making a one-off donation to my wallet:
+  * XMR: 48edfHu7V9Z84YzzMa6fUueoELZ9ZRXq9VetWzYGzKt52XU5xvqgzYnDK9URnRoJMk1j8nLwEVsaSWJ4fhdUyZijBGUicoD
+  */
+-constexpr const int kDefaultDonateLevel = 1;
+-constexpr const int kMinimumDonateLevel = 1;
++constexpr const int kDefaultDonateLevel = 0;
++constexpr const int kMinimumDonateLevel = 0;
+ 
+ 
+ #endif // XMRIG_DONATE_H
+diff --git a/src/net/Network.cpp b/src/net/Network.cpp
+index ae28e65..e6b5567 100644
+--- a/src/net/Network.cpp
++++ b/src/net/Network.cpp
+@@ -196,6 +196,10 @@ void xmrig::Network::onLogin(IStrategy *, IClient *client, rapidjson::Document &
+         if (index > 0 && index < algorithms.size()) {
+             std::swap(algorithms[0], algorithms[index]);
+         }
++        // XMRange patch: a pool that names its algorithm (p2pool) gets only that one in the
++        // login. p2pool reads at most 1024 bytes per stratum message and bans the sender for a
++        // longer one; every algorithm plus its algo-perf makes the login about 1.4 KB.
++        algorithms = { algorithm };
+     }
+ 
+     Value algo(kArrayType);

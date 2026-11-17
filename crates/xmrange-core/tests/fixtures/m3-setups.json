@@ -1,0 +1,23 @@
+{
+  "chip": "Apple M3",
+  "limits": { "threads": 8, "e_cores": 4 },
+  "note": "Measured means only (M3 Air 15\", 16 GB, on AC, 2026-09-23), copied from each run's summary.json. Setups not listed were never measured and score nothing in tests. Yield was never A/B-tested; tests treat yield off as yield on. The separate lpm-rx-8t/6t/4t-ecore runs are left out: the Low Power Mode curves measured the same setups inside one xmrig process. Holes: no Low Power Mode-off per-thread curve (1, 2, 3, 5, 7 threads; runs/20260923-151631-lpm-off-curve-pe stopped with no summary.json) and no Low Power Mode-off E-only 1-3 threads. Ruling P4-C7: the Task 10 sim counts unscored trials against the budget; re-measuring that curve stays in the parked idle-Mac campaign.",
+  "setups": [
+    {"low_power": true, "e_core_clamp": false, "threads": 1, "hs": 278.75, "sys_w": 4.695, "cpu_w": 1.177, "temp_c": 39.24, "src": "runs/20260923-131545-lpm-on-curve-pe"},
+    {"low_power": true, "e_core_clamp": false, "threads": 2, "hs": 728.19, "sys_w": 7.057, "cpu_w": 2.282, "temp_c": 46.39, "src": "runs/20260923-131545-lpm-on-curve-pe"},
+    {"low_power": true, "e_core_clamp": false, "threads": 3, "hs": 1095.45, "sys_w": 8.233, "cpu_w": 3.137, "temp_c": 50.93, "src": "runs/20260923-131545-lpm-on-curve-pe"},
+    {"low_power": true, "e_core_clamp": false, "threads": 4, "hs": 1362.74, "sys_w": 8.896, "cpu_w": 3.713, "temp_c": 53.47, "src": "runs/20260923-131545-lpm-on-curve-pe"},
+    {"low_power": true, "e_core_clamp": false, "threads": 5, "hs": 1824.71, "sys_w": 9.104, "cpu_w": 3.807, "temp_c": 54.83, "src": "runs/20260923-131545-lpm-on-curve-pe"},
+    {"low_power": true, "e_core_clamp": false, "threads": 6, "hs": 1830.43, "sys_w": 9.011, "cpu_w": 3.542, "temp_c": 54.19, "src": "runs/20260923-131545-lpm-on-curve-pe"},
+    {"low_power": true, "e_core_clamp": false, "threads": 7, "hs": 1743.34, "sys_w": 8.922, "cpu_w": 3.261, "temp_c": 53.17, "src": "runs/20260923-131545-lpm-on-curve-pe"},
+    {"low_power": true, "e_core_clamp": false, "threads": 8, "hs": 1857.83, "sys_w": 8.964, "cpu_w": 3.254, "temp_c": 53.39, "src": "runs/20260923-131545-lpm-on-curve-pe"},
+    {"low_power": true, "e_core_clamp": true, "threads": 1, "hs": 183.92, "sys_w": 4.477, "cpu_w": 0.886, "temp_c": 40.31, "src": "runs/20260923-140248-lpm-on-curve-e"},
+    {"low_power": true, "e_core_clamp": true, "threads": 2, "hs": 369.84, "sys_w": 3.846, "cpu_w": 0.423, "temp_c": 37.68, "src": "runs/20260923-140248-lpm-on-curve-e"},
+    {"low_power": true, "e_core_clamp": true, "threads": 3, "hs": 471.43, "sys_w": 4.778, "cpu_w": 0.574, "temp_c": 38.86, "src": "runs/20260923-140248-lpm-on-curve-e"},
+    {"low_power": true, "e_core_clamp": true, "threads": 4, "hs": 528.29, "sys_w": 4.921, "cpu_w": 0.647, "temp_c": 40.36, "src": "runs/20260923-140248-lpm-on-curve-e"},
+    {"low_power": false, "e_core_clamp": false, "threads": 4, "hs": 2323.0, "sys_w": 19.02, "cpu_w": 10.87, "temp_c": 95.43, "src": "runs/20260923-113913-rx-4t (steady)"},
+    {"low_power": false, "e_core_clamp": false, "threads": 6, "hs": 2873.6, "sys_w": 20.19, "cpu_w": 10.87, "temp_c": 96.48, "src": "runs/20260923-112438-rx-6t (steady)"},
+    {"low_power": false, "e_core_clamp": false, "threads": 8, "hs": 3028.6, "sys_w": 21.12, "cpu_w": 11.04, "temp_c": 97.04, "src": "runs/20260923-111003-rx-8t (steady)"},
+    {"low_power": false, "e_core_clamp": true, "threads": 4, "hs": 500.3, "sys_w": 4.71, "cpu_w": 0.7, "temp_c": 43.22, "src": "runs/20260923-115348-rx-4t-ecore (steady)"}
+  ]
+}

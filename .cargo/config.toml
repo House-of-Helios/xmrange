@@ -1,0 +1,4 @@
+[alias]
+dev = "run -p xmrange-cli --features dev-diagnostics --"
+devtest = "test --workspace --features xmrange-core/dev-diagnostics,xmrange-cli/dev-diagnostics"
+dev-app = "run -p xmrange-app --features dev-diagnostics --"

@@ -1,0 +1,1762 @@
+/* XMRange — design system and shell.
+   Port of the approved desktop mockup (_Research/design/2026-09-23-dashboard-mockup/Main.dc.html).
+   CSP is style-src 'self': every rule lives here. Dynamic widths/heights are set via CSSOM after render. */
+
+/* ── fonts (bundled; no remote fonts at runtime) ─────────────────────────── */
+
+@font-face {
+  font-family: "Jost";
+  font-style: normal;
+  font-weight: 400;
+  src: url(assets/fonts/jost-latin-400-normal.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "Jost";
+  font-style: normal;
+  font-weight: 500;
+  src: url(assets/fonts/jost-latin-500-normal.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "Jost";
+  font-style: normal;
+  font-weight: 600;
+  src: url(assets/fonts/jost-latin-600-normal.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 400;
+  src: url(assets/fonts/fraunces-latin-400-normal.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 600;
+  src: url(assets/fonts/fraunces-latin-600-normal.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-weight: 600;
+  src: url(assets/fonts/fraunces-latin-600-italic.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  src: url(assets/fonts/jetbrains-mono-latin-400-normal.woff2) format("woff2");
+}
+
+/* ── tokens (copied exactly from the mockup's `t` objects) ───────────────── */
+
+:root {
+  --font-body: "Jost", system-ui, sans-serif;
+  --font-display: "Fraunces", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --ground: #faf6ee;
+  --card: #f1eee8;
+  --pill: #e9e4da;
+  --text: #2e363d;
+  --muted: #585d62;
+  --accent-text: #a03c0a;
+  --accent-hover: #7a2d06;
+  --fill: #f96a0e;
+  --wash: rgba(249, 106, 14, 0.12);
+  --track: #ddd6ca;
+  --shadow: 0 1px 2px rgba(46, 54, 61, 0.06), 0 6px 18px rgba(46, 54, 61, 0.07);
+  --tape: #fdfbf7;
+  --tape-text: #2e363d;
+  --tape-dim: #8a8f94;
+  --active: #fffdf8;
+  --active-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+
+  --live: #3f9a4a;
+  /* tape tags: four clearly different hues (green · gold · violet · red) */
+  --tag-cpu: #2b8a3e;
+  --tag-net: #a87700;
+  --tag-miner: #8a45d6;
+  --tag-error: #c9252c;
+
+  --scrim: rgba(27, 32, 37, 0.32);
+
+  color-scheme: light;
+}
+
+/* Explicit dark. */
+:root[data-theme="dark"] {
+  --ground: #1b2025;
+  --card: #252b31;
+  --pill: #2e353c;
+  --text: #eef0f1;
+  --muted: #a7afb6;
+  --accent-text: #ff8a3d;
+  --accent-hover: #ffa766;
+  --fill: #f96a0e;
+  --wash: rgba(249, 106, 14, 0.16);
+  --track: #3a424a;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --tape: #14181c;
+  --tape-text: #e4e8eb;
+  --tape-dim: #7f8a94;
+  --tag-cpu: #74d68a;
+  --tag-net: #f2c14e;
+  --tag-miner: #c49bff;
+  --tag-error: #ff6b6b;
+  --active: #3a424a;
+  --scrim: rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+/* theme: system follows macOS appearance. */
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="system"] {
+    --ground: #1b2025;
+    --card: #252b31;
+    --pill: #2e353c;
+    --text: #eef0f1;
+    --muted: #a7afb6;
+    --accent-text: #ff8a3d;
+    --accent-hover: #ffa766;
+    --fill: #f96a0e;
+    --wash: rgba(249, 106, 14, 0.16);
+    --track: #3a424a;
+    --shadow: 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 24px rgba(0, 0, 0, 0.35);
+    --tape: #14181c;
+    --tape-text: #e4e8eb;
+    --tape-dim: #7f8a94;
+    --tag-cpu: #74d68a;
+    --tag-net: #f2c14e;
+    --tag-miner: #c49bff;
+    --tag-error: #ff6b6b;
+    --active: #3a424a;
+    --scrim: rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+
+/* ── base ────────────────────────────────────────────────────────────────── */
+
+html,
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-height: 100vh;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+  color: inherit;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+input {
+  font-family: var(--font-body);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+a {
+  color: var(--accent-text);
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+:focus-visible {
+  outline: 2px solid var(--fill);
+  outline-offset: 2px;
+}
+
+img {
+  display: block;
+}
+
+/* ── board ───────────────────────────────────────────────────────────────── */
+
+/* The board is exactly the window's height; the header keeps its place and the
+   grid scrolls when the window is shorter than the board (a 13" Air, M10). */
+.board {
+  box-sizing: border-box;
+  height: 100vh;
+  overflow: hidden;
+  padding: 26px 0 16px;
+  background: var(--ground);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+}
+
+/* top-right: theme toggle + settings */
+.corner {
+  position: absolute;
+  top: 24px;
+  right: 32px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Top-left mirror of the theme/settings corner, clear of the window buttons: the update pill. */
+.corner--left {
+  right: auto;
+  left: 96px;
+}
+
+.update-btn {
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.round-btn {
+  height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: var(--pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-btn {
+  gap: 2px;
+  padding: 0 7px;
+}
+
+.gear-btn {
+  width: 44px;
+  padding: 0;
+}
+
+/* The owner's mode icons: light (the honey pot) and dark (the moon), the one in use at full
+   strength, the other faded. */
+.theme-btn .mode-light,
+.theme-btn .mode-dark,
+.gear-btn img {
+  width: 22px;
+  height: 22px;
+}
+
+/* The mode in use sits in an orange pill; the other one is faded. */
+.theme-btn .mode-light,
+.theme-btn .mode-dark {
+  box-sizing: content-box;
+  padding: 4px 9px;
+  border-radius: 999px;
+}
+
+.theme-btn .mode-light {
+  background: var(--fill);
+}
+
+.theme-btn .mode-dark {
+  opacity: 0.45;
+}
+
+:root[data-theme="dark"] .theme-btn .mode-light {
+  opacity: 0.45;
+  background: none;
+}
+
+:root[data-theme="dark"] .theme-btn .mode-dark {
+  opacity: 1;
+  background: var(--fill);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="system"] .theme-btn .mode-light {
+    opacity: 0.45;
+    background: none;
+  }
+  :root[data-theme="system"] .theme-btn .mode-dark {
+    opacity: 1;
+    background: var(--fill);
+  }
+}
+
+/* header: icon + wordmark */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.brand__icon {
+  width: 76px;
+  height: 76px;
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+}
+
+.brand__words {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wordmark {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 30px;
+  line-height: 1;
+  color: var(--text);
+}
+
+/* segmented pill (pool picker, h/w counts) */
+.seg {
+  display: flex;
+  padding: 4px;
+  gap: 4px;
+  border-radius: 999px;
+  background: var(--pill);
+}
+
+.seg--pool {
+  margin-top: 4px;
+}
+
+/* The pool picker wears the light/dark toggle's look: a 44px pill, the chosen pool in the orange
+   fill, the other faded. */
+.seg--pool {
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 7px;
+  gap: 2px;
+  align-items: center;
+}
+
+.seg--pool .seg__btn {
+  height: 30px;
+  padding: 0 14px;
+  font-weight: 600;
+  color: var(--text);
+  opacity: 0.45;
+}
+
+.seg--pool .seg__btn.is-on {
+  background: var(--fill);
+  color: #ffffff;
+  box-shadow: none;
+  opacity: 1;
+}
+
+.seg__btn {
+  height: 36px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.seg__btn.is-on {
+  background: var(--active);
+  color: var(--text);
+  box-shadow: var(--active-shadow);
+}
+
+/* status row: live light | tabs | stage chip (p2pool only) */
+.statusrow {
+  width: 896px;
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.statusrow__end {
+  justify-self: end;
+}
+
+.chip--stage {
+  margin-top: 0;
+  height: 26px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.chip--stage[hidden] {
+  display: none;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tabs__sep {
+  color: var(--muted);
+  font-size: 17px;
+}
+
+.tab {
+  border: none;
+  background: none;
+  padding: 8px 2px;
+  font-size: 17px;
+  font-weight: 400;
+  color: var(--text);
+}
+
+.tab.is-on {
+  font-weight: 600;
+  color: var(--accent-text);
+}
+
+/* first-run notice under the header, before the first start: what the pool
+   sees, and the default wallet while it is in use. Negative margins fold it
+   into the board's gaps, and the board's gaps and bottom padding give up the
+   rest, so the full 970px window still shows the whole grid without scrolling. */
+.board.has-notice {
+  gap: 10px;
+  padding-bottom: 6px;
+}
+
+.board.has-notice .grid {
+  padding-bottom: 16px;
+}
+
+.notice[hidden],
+.notice__line[hidden] {
+  display: none;
+}
+
+.notice {
+  width: 896px;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  margin: -6px 0 -6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.notice__lines {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.notice__line {
+  margin: 0;
+  height: 18px;
+}
+
+.notice__use {
+  border: none;
+  background: none;
+  padding: 0 2px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent-text);
+}
+
+.notice__use:hover {
+  color: var(--accent-hover);
+}
+
+.notice__x {
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--pill);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+
+/* Read by screen readers, never drawn. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── grid ────────────────────────────────────────────────────────────────── */
+
+/* The grid is the board's scroller. Its side and bottom padding keep the cards'
+   shadows from being clipped by the scroll box; the negative side margins give
+   that room back, so the cards sit exactly where they did (896px, centred). */
+.grid {
+  width: 896px;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 160px;
+  grid-auto-flow: dense;
+  gap: 16px;
+  padding: 4px 24px 20px;
+  margin: 0 -24px;
+}
+
+.brand,
+.seg--pool {
+  flex: 0 0 auto;
+}
+
+.card {
+  box-sizing: border-box;
+  padding: 14px 16px 14px;
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  min-width: 0;
+  position: relative;
+}
+
+/* Nothing in a card is squeezed to fit: a row that doesn't fit shows as overflow (and fails
+   the self-check), instead of clipping its own text (low power's caption, the g in "16 gb"). */
+.card > *,
+.joined__left > *,
+.run__col > * {
+  flex-shrink: 0;
+}
+
+/* ── the 1×1 anatomy (every 1×1 card, and every 1×1-aligned column) ──────
+   title at the top · emoji 40 · value (or its control) · an optional bar right under
+   the value · the caption pinned to the bottom edge. Pinned, the caption's bottom sits
+   at one height in every 1×1 card on every tab (the threads card's), and every bar at
+   one height (value bottom + 5px). */
+.card__base {
+  margin-top: auto;
+}
+
+/* Two caption lines (chip: cores, then memory). Pinned to the same bottom edge as every
+   caption, set on 14px lines; the pair takes 2px of the 5px gap under the value, so it is
+   placed on the edge directly instead of through the flex flow. */
+.card__caps {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.card__caps .card__cap {
+  line-height: 14px;
+}
+
+/* Corner pill: a round button at the top right for a card that is edited (pencil) or
+   explained (arrow). Centred on the title's line, clear of the centred title. */
+/* the cores card's "e" pill: e-cores only, lit when on */
+.card__pill--text {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.card__pill--text.is-on {
+  background: var(--fill);
+  color: #ffffff;
+}
+
+.card__pill {
+  position: absolute;
+  top: 13px;
+  right: 15px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--pill);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card__pill:hover {
+  color: var(--accent-text);
+}
+
+.card__pill svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.c2 { grid-column: span 2; }
+.c3 { grid-column: span 3; }
+.c4 { grid-column: span 4; }
+.r2 { grid-row: span 2; }
+
+/* shared card atoms */
+.card__title {
+  font-weight: 600;
+  font-size: 15.5px;
+  color: var(--accent-text);
+  white-space: nowrap;
+}
+
+.card__icon {
+  width: 40px;
+  height: 40px;
+  margin-top: 2px;
+}
+
+.card__value {
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 600;
+  font-variant-numeric: lining-nums tabular-nums;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Text-fit rule: a 1×1 caption is one line; shorten, never wrap. */
+.card__cap {
+  font-size: 12.5px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.25;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bar {
+  width: 132px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.bar__fill {
+  width: 0;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--fill);
+}
+
+.btn {
+  height: 30px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--fill);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.btn--sm {
+  height: 26px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.btn--quiet {
+  background: var(--pill);
+  color: var(--text);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* An inline backend error (worker, wallet): shown verbatim, so it may wrap. */
+.card__err {
+  max-width: 100%;
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--accent-text);
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.card__icon--sm {
+  width: 28px;
+  height: 28px;
+}
+
+/* period pill (earned + cost, synced) */
+.card__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.period {
+  height: 24px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 999px;
+  background: var(--pill);
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.rate {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.rate__input {
+  width: 44px;
+  height: 24px;
+  box-sizing: border-box;
+  padding: 0 4px;
+  border: 1px solid var(--track);
+  border-radius: 8px;
+  background: var(--ground);
+  color: var(--text);
+  font-size: 12px;
+}
+
+/* WebKit's number spinner would eat the 44px rate field; the value is typed. */
+.rate__input::-webkit-inner-spin-button,
+.rate__input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.rate__input {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ── the 2×2 anatomy (hashrate on mining, power on machine) ──────────────────
+   One anatomy for both, so switching tabs moves nothing. The top half sits in the first grid
+   row's inner box (132px): two 180px columns 48px apart (one 1×1 card's inner width, and the
+   card-to-card seam), so each column centres over the 1×1 card below it. Each column: title ·
+   emoji 36 · Fraunces 46 value · caption pinned to the bottom, on the row-1 1×1 caption line.
+   The chart fills the second grid row's inner box (132px), ending on the card's inner bottom. */
+/* Selectors carry two classes so .joined (the hashrate top half is one) and .joined__left
+   (its hashrate column) never override them. */
+.card > .hero {
+  width: 100%;
+  height: auto;
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 180px 180px;
+  gap: 0 48px;
+}
+
+.hero > .hero__col {
+  min-width: 0;
+  min-height: 132px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.hero__icon {
+  width: 36px;
+  height: 36px;
+}
+
+.hero__value {
+  font-family: var(--font-display);
+  font-size: 46px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: lining-nums tabular-nums;
+  white-space: nowrap;
+}
+
+/* The caption: a 1×1 caption (12.5px, one line), pinned to the column's bottom. */
+.hero > .hero__col > .hero__cap {
+  margin-top: auto;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+/* Left column of the hashrate card: "mine" and its emoji at the hashrate's title and emoji
+   heights, then the two 26px run pills, 4px apart. The 8px the pills gave up (30 → 26 each) sits
+   between the emoji and the top pill (4 → 12px), so the stop pill still ends where it did, just
+   above the caption line and never below it. */
+.run__pills {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+/* I1: the engine ended in an error. The backend's reason, verbatim, may wrap to two lines;
+   the column grows into the gap above the chart, which stays where it is. */
+.spark__value.is-error {
+  color: var(--accent-text);
+}
+
+.hero > .hero__col > .spark__cap--err {
+  color: var(--accent-text);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* M2: xmrig runs something other than what the card shows. */
+.card__cap.is-warn {
+  color: var(--accent-text);
+}
+
+.chart__box {
+  position: relative;
+  margin-top: auto;
+  flex: 0 0 auto;
+}
+
+.chart {
+  display: block;
+}
+
+.chart__area {
+  fill: var(--wash);
+}
+
+.chart__line {
+  fill: none;
+  stroke: var(--fill);
+  stroke-width: 2.25;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart__temp {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.75;
+  stroke-dasharray: 4 4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart__base {
+  fill: none;
+  stroke: var(--track);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 5;
+  stroke-linecap: round;
+}
+
+/* ── kind: progress (trials progress panel) and power ────────────────────── */
+
+/* The progress panel's run/stop button, under the joined__left column's caption. */
+.joined__left .btn--sm {
+  margin-top: 2px;
+  height: 26px;
+  padding: 0 14px;
+  font-size: 12.5px;
+}
+
+/* The power chart's legend floats at the chart's top left, in the chart's top 22px, which the
+   lines never enter (drawCharts: LEGEND_PAD). */
+.legend {
+  position: absolute;
+  top: 3px;
+  left: 8px;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--muted);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.legend__swatch {
+  color: var(--fill);
+}
+
+/* ── kind: joined (trials, profile) ──────────────────────────────────────── */
+
+.joined {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+}
+
+/* 180px = one 1×1 card's inner width: (896 − 3·16)/4 − 2·16. Lines up with the grid. */
+.joined__left {
+  flex: 0 0 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+/* A 2×1 left column may take a second caption line (throttle: "run trials first"). */
+.joined__left .card__cap {
+  line-height: 1.3;
+  white-space: normal;
+}
+
+/* The throttle card's 2nd caption line (what's actually held right now, or "manual"): after the
+   1st caption in DOM order (so a plain .card__cap lookup still finds the 1st caption, which stays
+   pinned to the shared baseline), but CSS order renders it above that caption instead — a touch
+   smaller, so the 2×1 card's fixed height still holds both lines. */
+.joined__left > .card__base:not(.joined__sub2) {
+  order: 2;
+}
+
+.joined__left .joined__sub2 {
+  order: 1;
+  margin-bottom: -8px;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.joined__right {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.joined__right--list {
+  justify-content: flex-start;
+  padding-top: 1px;
+}
+
+/* Profile choices: one grid, pills in the first column (as wide as the widest, "efficient", so
+   the blurbs left-align), blurbs in the second, centred in the card's height. */
+.joined__right--choices {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  justify-content: start;
+  align-content: center;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 6px;
+}
+
+.joined__right--choices .choice {
+  display: contents;
+}
+
+.trial {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 6px;
+  height: 18px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--muted);
+}
+
+/* A trials-card row for a real measured setup is a button (P5: tap to run it): the plain .trial
+   look, reset to a button's defaults. */
+.trial--pick {
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0;
+  /* the family only: `font: inherit` also took the parent's size and line height over .trial's
+     12 px / 18 px, and a 16 px parent made the row 21 px tall */
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.trial--pick:hover {
+  color: var(--accent-text);
+}
+
+.trial__star,
+.trial__label,
+.trial__hw {
+  display: flex;
+  align-items: center;
+  height: 18px;
+}
+
+.trial__label {
+  gap: 4px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.trial__hw {
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+.trial__icon {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+}
+
+/* best row: the whole row reads in the text colour and weight; the height never changes. */
+.trial.is-best {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.empty {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ── kind: lever (low power 2×1, machine tab) ─────────────────────────────
+   The measured gain beside the 1×1-aligned column: a muted note, then what · h/w off → on ·
+   the gain, on 18px lines, centred in the card's height so the corner pill above stays clear. */
+.lever {
+  display: grid;
+  grid-template-columns: auto auto auto;
+  justify-content: start;
+  align-content: center;
+  column-gap: 12px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.lever__note {
+  grid-column: 1 / -1;
+  font-size: 11.5px;
+}
+
+.lever__hw {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.lever__gain {
+  font-weight: 600;
+  color: var(--accent-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.choice__pill {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  /* Equal inner padding, emoji-to-edge = text-to-edge (as the run pills). */
+  padding: 0 9px;
+  border: none;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  background: var(--ground);
+  color: var(--text);
+}
+
+.choice__pill img {
+  width: 22px;
+  height: 22px;
+}
+
+/* Run pills: one width for both, set by the longest label ("resume", laid in invisibly by
+   ::before), with the emoji-to-edge space on the left equal to the text-to-edge space on the
+   right. Each pill's own emoji + label is centred in that width, so its sides stay equal too. */
+.choice__pill.run__pill {
+  width: auto;
+  height: 26px;
+  padding: 0 9px;
+  display: grid;
+  justify-items: center;
+  align-items: center;
+  gap: 0;
+}
+
+.run__pill::before {
+  content: "resume";
+  grid-area: 1 / 1;
+  padding-left: 27px;
+  visibility: hidden;
+}
+
+.run__face {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.choice__pill.run__pill img {
+  width: 20px;
+  height: 20px;
+}
+
+.choice__pill.is-on {
+  background: var(--text);
+  color: var(--ground);
+}
+
+.choice__pill:disabled {
+  opacity: 0.55;
+}
+
+.choice__blurb {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* the pill's Low Power Mode turtle sits inside the text line, never taller than it */
+.choice__blurb .trial__icon {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  margin: -4px 0; /* its line box counts 3 px: the line keeps the text's own height */
+  vertical-align: middle;
+}
+
+.is-disabled .choice__pill,
+.is-disabled .joined__left .btn--sm {
+  opacity: 0.55;
+}
+
+/* ── kind: tape (3×1) ────────────────────────────────────────────────────── */
+
+/* Seven 17px lines (TAPE_LINES) in the 132px window: 6.5px above the first, 6.5px under the
+   last. The line height is whole pixels: WebKit sets a fractional one (1.6 × 11 = 17.6) on 17. */
+.tape {
+  width: 100%;
+  flex-grow: 1;
+  box-sizing: border-box;
+  padding: 6.5px 14px;
+  border-radius: 14px;
+  background: var(--tape);
+  box-shadow: inset 0 0 0 1px var(--track);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 17px;
+  color: var(--tape-text);
+  white-space: nowrap;
+  overflow: hidden;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* The trials progress panel's log (P5): the same tape look, but it scrolls instead of clipping
+   at a fixed line count, since a sweep can run longer than the mining tab's 7 lines hold. */
+.tape--scroll {
+  overflow-y: auto;
+  white-space: normal;
+}
+
+.tape--scroll .tape__line {
+  white-space: nowrap;
+}
+
+.tape__line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tape__ts,
+.tape__empty {
+  color: var(--tape-dim);
+}
+
+.tag--cpu { color: var(--tag-cpu); }
+.tag--net { color: var(--tag-net); }
+.tag--miner { color: var(--tag-miner); }
+.tag--error { color: var(--tag-error); }
+
+.tag--cpu,
+.tag--net,
+.tag--miner,
+.tag--error {
+  font-weight: 600;
+}
+
+/* The logs legend: tag (its tape colour, bold) | what it carries, four 14px lines, the last on
+   the 1×1 caption line. */
+.legend--tape {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 8px;
+  font-size: 11.5px;
+  line-height: 14px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ── kind: threads (− / + stepper) ───────────────────────────────────────── */
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.stepper__btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 999px;
+  background: var(--pill);
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 0;
+}
+
+.stepper__value {
+  min-width: 58px;
+  text-align: center;
+}
+
+/* ── kind: worker (inline edit) ──────────────────────────────────────────── */
+
+.worker__input {
+  width: 170px;
+  height: 30px;
+  box-sizing: border-box;
+  padding: 0 6px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* No underline at rest (the pencil pill says it edits); a solid accent line while typing. */
+.worker__input:focus {
+  outline: none;
+  box-shadow: inset 0 -1.5px 0 var(--fill);
+}
+
+/* ── kind: wallet ────────────────────────────────────────────────────────── */
+
+/* The masked address is the value, and a button: a tap opens the edit mode (as the pencil does). */
+.wallet__value {
+  font-size: 20px;
+  border: none;
+  background: none;
+  padding: 0;
+  line-height: normal;
+}
+
+.wallet__value:hover {
+  color: var(--accent-text);
+}
+
+.wallet__note {
+  font-size: 12px;
+}
+
+.wallet__input {
+  width: 176px;
+  height: 30px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border: 1px solid var(--track);
+  border-radius: 8px;
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.wallet__hint {
+  font-size: 11.5px;
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.wallet__hint.is-good {
+  color: var(--live);
+}
+
+.wallet__clear {
+  border: none;
+  background: none;
+  padding: 2px 2px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.wallet__clear:hover {
+  color: var(--text);
+}
+
+/* A verbatim backend error: up to three 11px lines between the field and the actions row. */
+.wallet__hint.is-bad {
+  max-width: 100%;
+  font-size: 11px;
+  line-height: 1.15;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  color: var(--accent-text);
+}
+
+.wallet__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── kind: thermal (4-step level bar) ────────────────────────────────────── */
+
+.levels {
+  display: flex;
+  gap: 4px;
+}
+
+.levels__seg {
+  width: 30px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--track);
+}
+
+.levels__seg.is-on {
+  background: var(--fill);
+}
+
+/* ── kind: measure (whole mac | cpu only) ────────────────────────────────── */
+
+.seg--small {
+  padding: 3px;
+  gap: 3px;
+}
+
+.seg--small .seg__btn {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── kind: curve (thread curve 2×2) ──────────────────────────────────────── */
+
+.curve__cap {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.curve__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  height: 206px;
+  margin-top: 10px;
+}
+
+.curve__col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.curve__hs {
+  font-size: 10.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.curve__bar {
+  width: 30px;
+  height: 0;
+  border-radius: 8px 8px 4px 4px;
+  background: var(--track);
+}
+
+.curve__n {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.curve__col.is-best .curve__bar {
+  background: var(--fill);
+}
+
+.curve__col.is-best .curve__n {
+  font-weight: 600;
+  color: var(--accent-text);
+}
+
+.curve__foot {
+  font-size: 12.5px;
+  text-align: center;
+  line-height: 1.35;
+  margin-top: auto;
+}
+
+.curve__foot span {
+  color: var(--muted);
+}
+
+.curve__cmd {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+/* ── kind: note (p2pool "your own node" 2×2) ─────────────────────────────── */
+
+.note__icon {
+  width: 72px;
+  height: 72px;
+  margin-top: 22px;
+}
+
+.note__value {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+.note__cap {
+  font-size: 14px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.45;
+  max-width: 320px;
+}
+
+.chip {
+  margin-top: auto;
+  height: 28px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--pill);
+  font-size: 12.5px;
+}
+
+/* .chip's own display: flex outranks the browser's default [hidden] rule, so the update pill
+   (empty until an update is offered) needs its own override, or it draws as a blank bar. */
+#update-pill[hidden] {
+  display: none;
+}
+
+/* ── dialogs: the settings sheet and the low power guide ─────────────── */
+
+.sheet[hidden] {
+  display: none;
+}
+
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sheet__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+}
+
+.sheet__card {
+  position: relative;
+  width: 460px;
+  box-sizing: border-box;
+  padding: 22px 26px 24px;
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sheet__card--small {
+  width: 400px;
+}
+
+.sheet__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sheet__head img {
+  width: 26px;
+  height: 26px;
+}
+
+.sheet__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  flex: 1 1 auto;
+}
+
+.sheet__body {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.sheet__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sheet__row {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sheet__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-text);
+  white-space: nowrap;
+}
+
+.sheet__ctl {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sheet__currency {
+  width: 36px;
+  height: 24px;
+  box-sizing: border-box;
+  padding: 0 4px;
+  border: 1px solid var(--track);
+  border-radius: 8px;
+  background: var(--ground);
+  color: var(--text);
+  font-size: 12px;
+  text-align: center;
+}
+
+.sheet__note {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: right;
+}
+
+/* a folder row (the node's chain folder): the chosen folder's name (full path in its tooltip)
+   and the native folder picker's button. */
+.update-folder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.update-folder__name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+#set-ac-row[hidden] {
+  display: none;
+}
+
+/* the network log: plain lines, mono for the ports */
+.netlog {
+  margin: -6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.netlog li {
+  overflow-wrap: anywhere;
+}
+
+/* the xmr price row: symbol · amount · typed | fetch; the fetched price's age under it */
+.price {
+  gap: 6px;
+}
+
+.price__input {
+  width: 72px;
+}
+
+.price__input:disabled {
+  opacity: 0.6;
+}
+
+.price__note {
+  margin: -6px 0 0;
+}
+
+.price__note:empty {
+  display: none;
+}
+
+/* the node guide's startup flag: selectable, with its own copy button */
+.copyline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 2px;
+}
+
+.copyline code {
+  flex: 1 1 auto;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* A save_settings refusal, verbatim. */
+.sheet__err[hidden] {
+  display: none;
+}
+
+.sheet__err {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--accent-text);
+}
+
+.sheet__privacy {
+  margin: 2px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--track);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.sheet__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* seeker 2×1: the run/stop button sits under the trial log, right-aligned. */
+.seeker__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+/* Trial log icons: cores and the Low Power Mode turtle, sized to the mono line. */
+.tape__icon {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  vertical-align: middle;
+  margin: -2px 0 0 2px;
+}
+
+/* Every button shows it was pressed. */
+.btn:active:not(:disabled) {
+  transform: scale(0.96);
+  filter: brightness(0.9);
+}
+
+
+/* Seeker count: the turtle when the Low Power Mode set is in play. */
+.seeker__value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.seeker__turtle {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+/* Trials list: rows scroll above the "start over" button, which never overflows the card. */
+.trials__rows{flex:1 1 0;min-height:0;overflow-y:auto}
