@@ -1,0 +1,1 @@
+Docs screenshots from test data, without the real app. `stub.js` fakes `window.__TAURI__` (fixtures: a healthy M2 Pro MacBook, a fake wallet). To redo `docs/site/img/*.png`: serve the UI (`cd crates/xmrange-app/ui && python3 -m http.server 3600 --bind 127.0.0.1`), then run `shoot.js` through Playwright (MCP `browser_run_code_unsafe` with `filename`), and stop the server.

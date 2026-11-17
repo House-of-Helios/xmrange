@@ -24,6 +24,7 @@ The bundled Tor client is Arti, from the Tor Project. In settings, the **tor** r
 Settings, **network**, **show connections**. It lists what is connected now and what this setup allows. It shows counts and ports only. XMRange does not show or keep an address.
 
 <!-- screenshot: the network sheet with connected now and allowed in this setup -->
+![The network sheet: connected now and allowed in this setup](img/network-sheet.png)
 
 ## What is stored on your Mac
 

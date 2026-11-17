@@ -19,6 +19,7 @@ Expect a few hours on a Mac with many cores. You can **pause**, **stop** and lat
 While trials run, your temperature and battery limits do not apply. The trials need a steady Mac.
 
 <!-- screenshot: the tuning tab mid-trial, seeker card with its log -->
+![The tuning tab mid-trial with the seeker log](img/tuning-trial.png)
 
 ## Low Power Mode on laptops
 

@@ -13,6 +13,7 @@ Every check goes through Tor. GitHub sees a Tor exit and asks for one thing: the
 When a newer release is ready for your kind of Mac, a pill appears at the top left: **update 0.0.2 → restart** (with the new version number). Click it.
 
 <!-- screenshot: the update pill in the top left corner -->
+![The update pill](img/update-pill.png)
 
 The pill then reads "update 0.0.2 · downloading", and the app does the rest. If mining was on, it stops cleanly, the new app takes its place, XMRange reopens, and mining resumes.
 

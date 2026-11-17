@@ -13,6 +13,7 @@ If you turned Tor off, the first line says the pool sees your IP address instead
 The wallet line shows only while the default wallet is in use. The notice goes away when you press the **×**, or after you start mining.
 
 <!-- screenshot: the first-run notice with both lines -->
+![The first-run notice with both lines](img/first-run-notice.png)
 
 ## 1. Add your wallet
 
@@ -25,6 +26,7 @@ Find the **wallet** card on the mining tab. Click the address, or the pencil in 
 Until you save your own address, the card reads "default · ghostdrip dev wallet". See [The default wallet](05-default-wallet.md).
 
 <!-- screenshot: the wallet card in edit mode with a valid address hint -->
+![The wallet card in edit mode with a valid address hint](img/wallet-edit.png)
 
 ## 2. Name your worker (optional)
 
@@ -61,6 +63,7 @@ On the **hashrate** card press **start**. While it runs the same button reads **
 **tuning tab:** profile, seeker, core curve, trials, low power, watts counted. See [Trials and profiles](04-trials-and-profiles.md).
 
 <!-- screenshot: the mining tab with all cards, mid-run -->
+![The mining tab with all cards, mid-run](img/mining-tab.png)
 
 ## Settings
 
