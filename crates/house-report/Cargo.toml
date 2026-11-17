@@ -1,0 +1,13 @@
+[package]
+name = "house-report"
+description = "Sends one user-approved report to the House, encrypted (NIP-17 gift wrap), through Tor, to public Nostr relays."
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+nostr = { version = "0.45", features = ["nip59"] }
+nostr-sdk = "0.45"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "io-std", "io-util"] }
+serde_json = "1"

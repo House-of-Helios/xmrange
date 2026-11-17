@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/xmrange-core", "crates/xmrange-cli", "crates/xmrange-app"]
+members = ["crates/xmrange-core", "crates/xmrange-cli", "crates/xmrange-app", "crates/house-report"]
 
 [workspace.package]
 version = "0.0.1"
