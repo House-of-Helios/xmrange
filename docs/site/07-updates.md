@@ -2,13 +2,13 @@
 
 XMRange updates itself from GitHub releases. You do not need to visit the page again.
 
-## When it checks
+## How it checks
 
 At launch, then every 6 hours. If a check fails, for example when Tor or GitHub cannot be reached, it tries again in an hour.
 
 Every check goes through Tor. GitHub sees a Tor exit and asks for one thing: the latest release. Nothing about you or your mining is sent.
 
-## The update pill
+## Installing
 
 When a newer release is ready for your kind of Mac, a pill appears at the top left: **update 0.0.2 → restart** (with the new version number). Click it.
 
@@ -19,7 +19,7 @@ The pill then reads "update 0.0.2 · downloading", and the app does the rest. If
 
 If something goes wrong, the pill stays and the logs say why. Your current app is left as it was.
 
-## The checks before anything installs
+## How it trusts an update
 
 1. **A signature.** The release list is signed. XMRange checks the signature before it downloads anything. It also checks that the file is the one expected for your Mac, and that the version is newer.
 2. **A checksum.** After the download, the file's SHA-256 must match the signed value. A wrong file is deleted.
@@ -28,7 +28,5 @@ If something goes wrong, the pill stays and the logs say why. Your current app i
 5. **The swap.** Only now does mining stop and the new app replace the old. If the swap fails, the old one is put back.
 
 Apple and Intel builds never install each other's file.
-
-## Nothing about you is sent
 
 The request is the same for everyone. GitHub learns that a Tor user asked for the latest release.

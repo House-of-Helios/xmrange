@@ -1,0 +1,37 @@
+<!doctype html><meta charset="utf-8"><title>What a trial computes</title>
+<style>*{box-sizing:border-box;margin:0}
+body{width:1200px;height:440px;background:#faf6ee;font:16px -apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;color:#2b2a28;padding:44px 52px}
+h1{font:500 30px Georgia,"Iowan Old Style",serif;margin-bottom:30px}
+.sub{color:#5d5a55;font-size:14px}
+.box{border:1.5px solid #2b2a28;border-radius:18px;background:#fffdf8;padding:20px 24px}
+.card{background:#fff;border:1px solid #e3ddd1;border-radius:14px;padding:14px 18px}
+.pill{border-radius:14px;padding:14px 18px}
+h3{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+p{color:#5d5a55;line-height:1.4}
+.arrow{height:2px;background:#8a63c9;position:relative;flex:none}
+.arrow:after{content:"";position:absolute;right:-2px;top:-5px;border:6px solid transparent;border-left:9px solid #8a63c9}
+code{font:500 14px ui-monospace,Menlo,monospace}
+.eq{display:flex;align-items:center;gap:22px;margin-bottom:34px}
+.eq .op{font:500 40px Georgia,serif;color:#8a63c9}
+.eq .t{flex:1;text-align:center;padding:22px 16px}
+.eq .t b{display:block;font:500 26px Georgia,serif;margin-bottom:4px}
+.res{background:#eef3e4;border-color:#d6e0c3}
+.row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:26px}
+.bar{display:flex;height:44px;border-radius:12px;overflow:hidden;font-weight:600;font-size:14px}
+.bar div{display:flex;align-items:center;justify-content:center}
+</style>
+<h1>What a trial computes</h1>
+<div class="eq">
+ <div class="card t"><b>hashrate</b><span class="sub">hashes per second</span></div>
+ <div class="op">÷</div>
+ <div class="card t"><b>watts</b><span class="sub">the whole Mac (or CPU only, in settings)</span></div>
+ <div class="op">=</div>
+ <div class="card t res"><b>hashes per watt</b><span class="sub">the number XMRange ranks setups by</span></div>
+</div>
+<div class="row">
+ <div class="pill" style="background:#eef3e4"><h3>Core count</h3><p>1, 2, 3 … up to every core</p></div>
+ <div class="pill" style="background:#f6ead9"><h3>Priority</h3><p>normal, lower, or background</p></div>
+ <div class="pill" style="background:#efe6fb"><h3>Low Power Mode</h3><p>on and off, on laptops</p></div>
+</div>
+<div class="sub" style="margin-bottom:8px">One trial = one setup, 8 minutes</div>
+<div class="bar"><div style="width:50%;background:#e3ddd1;color:#5d5a55">4 min warm-up, never scored</div><div style="width:50%;background:#8a63c9;color:#fff">4 min measured</div></div>

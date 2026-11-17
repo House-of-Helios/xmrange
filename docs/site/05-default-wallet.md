@@ -1,6 +1,8 @@
 # The default wallet
 
-Until you add your own wallet, XMRange mines to the GhostDrip dev wallet. It is not an XMRange wallet. It belongs to the developer, and the app says so.
+Until you add your own wallet, XMRange mines to the GhostDrip dev wallet. It is never an XMRange wallet. It belongs to the developer, and the app says so.
+
+XMRange is not affiliated with GhostDrip. The default simply supports that project, because we like it.
 
 You see it three places:
 

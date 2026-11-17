@@ -1,0 +1,39 @@
+<!doctype html><meta charset="utf-8"><title>From trials to profiles</title>
+<style>*{box-sizing:border-box;margin:0}
+body{width:1200px;height:480px;background:#faf6ee;font:16px -apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;color:#2b2a28;padding:44px 52px}
+h1{font:500 30px Georgia,"Iowan Old Style",serif;margin-bottom:30px}
+.sub{color:#5d5a55;font-size:14px}
+.box{border:1.5px solid #2b2a28;border-radius:18px;background:#fffdf8;padding:20px 24px}
+.card{background:#fff;border:1px solid #e3ddd1;border-radius:14px;padding:14px 18px}
+.pill{border-radius:14px;padding:14px 18px}
+h3{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+p{color:#5d5a55;line-height:1.4}
+.arrow{height:2px;background:#8a63c9;position:relative;flex:none}
+.arrow:after{content:"";position:absolute;right:-2px;top:-5px;border:6px solid transparent;border-left:9px solid #8a63c9}
+code{font:500 14px ui-monospace,Menlo,monospace}
+.flow{display:grid;grid-template-columns:300px 60px 250px 60px 1fr;align-items:center}
+.col{display:flex;flex-direction:column;gap:12px}
+.s{background:#fff;border:1px solid #e3ddd1;border-radius:12px;padding:10px 16px}
+.s b{font-weight:600}
+.m{text-align:center;padding:30px 16px;background:#efe6fb;border-color:#d9c9f1}
+.m b{display:block;font:500 24px Georgia,serif;margin-bottom:6px}
+.p{display:grid;grid-template-columns:110px 1fr;gap:12px;align-items:baseline}
+.p b{font:500 22px Georgia,serif}
+.cap{font-size:13px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;margin-bottom:10px;color:#5d5a55}
+</style>
+<h1>From settings to Quiet, Balanced and Max</h1>
+<div class="flow">
+ <div><div class="cap">Each setting</div><div class="col">
+  <div class="s"><b>Core counts</b> 1 up to all</div>
+  <div class="s"><b>Lower priority</b> on half the cores and up</div>
+  <div class="s"><b>Efficiency cores</b> alone (Apple silicon)</div>
+  <div class="s"><b>Low Power Mode</b> on and off (laptops)</div></div></div>
+ <div class="arrow"></div>
+ <div class="card m"><b>Measure</b><span class="sub">8 minutes each.<br>Hashes per watt is kept.</span></div>
+ <div class="arrow"></div>
+ <div><div class="cap">Pick from the results</div><div class="col">
+  <div class="pill p" style="background:#eef3e4"><b>Quiet</b><p>Best hashes per watt on the efficiency cores, at background priority.</p></div>
+  <div class="pill p" style="background:#f6ead9"><b>Balanced</b><p>Best hashes per watt on about half the cores.</p></div>
+  <div class="pill p" style="background:#efe6fb"><b>Max</b><p>Every core, for the most hashes.</p></div></div></div>
+</div>
+<div class="sub" style="margin-top:28px">One sweep covers every setting. The profiles only choose from its results.</div>

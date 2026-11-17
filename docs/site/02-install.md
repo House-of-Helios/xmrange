@@ -29,7 +29,7 @@ Beside each zip sits a file with the same name ending in `.sha256`. It holds the
 
 Unzip the file. Drag `XMRange.app` into your Applications folder.
 
-## 4. Open it the first time
+## 4. Why macOS hesitates
 
 Apple has not signed XMRange, so macOS stops the first open. This is expected. The app is ad-hoc signed, and you can read its source.
 

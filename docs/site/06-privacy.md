@@ -1,8 +1,10 @@
 # Privacy
 
-XMRange connects only to the pool you select. It never uses both pools at once. It sends no telemetry and no crash reports.
+XMRange has no account, no analytics and no ads. It connects only to the pool you select, never both pools at once. This page lists everything that leaves your Mac, and says what does not.
 
-## What leaves your Mac
+![What leaves your Mac and what never does: trials and wallet stay on the Mac; through Tor, only the pool you pick, GitHub and the optional price fetch are reached](img/privacy-map.png)
+
+## What leaves the Mac
 
 | You choose | XMRange connects to | They see |
 |---|---|---|
@@ -26,13 +28,13 @@ Settings, **network**, **show connections**. It lists what is connected now and 
 <!-- screenshot: the network sheet with connected now and allowed in this setup -->
 ![The network sheet: connected now and allowed in this setup](img/network-sheet.png)
 
-## What is stored on your Mac
+## Where things are kept
 
 - **Your IP address** is not saved.
 - **Trial results** are in an encrypted database. Its key is a private file in the app's data folder, not the Keychain. XMRange keeps trials only, not a second-by-second history.
 - **Your wallet and worker name** are plain text in the settings file, since the pool sees them.
 - **Diagnostics** are off until you save one. **save as** writes a text report where you choose, with no wallet, no IPs and no names.
 
-## Never
+## What never leaves
 
 No telemetry. No crash reports. No sudo. Nothing from your Mac goes to anyone but the places in the table.
