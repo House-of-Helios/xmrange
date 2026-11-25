@@ -100,8 +100,8 @@ build_p2pool() {
   # p2pool's CMakeLists links its static deps from fixed in-tree paths (external/src/*/), and the
   # arm64 recipe builds curl in-tree. So x86_64 gets its own tree: an APFS clone (cp -c, no extra
   # disk) with the arm64 build outputs dropped and curl replaced by a pristine copy of its commit.
-  if [ ! -d "$SRC" ]; then
-    cp -c -R "$ORIG" "$SRC"
+  if [ ! -f "$SRC/CMakeLists.txt" ]; then   # missing, or pruned to its binary by tools/prune-vendor.sh
+    rm -rf "$SRC" && cp -c -R "$ORIG" "$SRC"
     rm -rf "$SRC/build" "$SRC/external/src/libuv/build" "$SRC/external/src/libzmq/build" "$SRC/external/src/curl"
     mkdir -p "$SRC/external/src/curl" && git -C "$ORIG/external/src/curl" archive HEAD | tar -x -C "$SRC/external/src/curl"
   fi

@@ -5558,7 +5558,7 @@ dependencies = [
 
 [[package]]
 name = "xmrange-app"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "ctrlc",
  "objc2",
@@ -5573,7 +5573,7 @@ dependencies = [
 
 [[package]]
 name = "xmrange-cli"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5584,7 +5584,7 @@ dependencies = [
 
 [[package]]
 name = "xmrange-core"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "getrandom 0.2.17",

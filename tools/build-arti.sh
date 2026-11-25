@@ -10,6 +10,7 @@ PIN="a71097fdf7b141b56d1eb3709628ee38d232c9d1"
 export PATH=/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH
 
 if [ ! -d "$SRC/.git" ]; then
+  rm -rf "$SRC"   # pruned by tools/prune-vendor.sh: only finished binaries were left
   git clone --depth 1 --branch "$TAG" https://gitlab.torproject.org/tpo/core/arti.git "$SRC"
 fi
 [ "$(git -C "$SRC" rev-parse HEAD)" = "$PIN" ] || { echo "arti is not at $TAG ($PIN)"; exit 1; }

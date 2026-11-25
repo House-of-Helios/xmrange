@@ -40,8 +40,8 @@ At rest:
 
 ## Install
 
-1. Download the zip for your Mac from Releases: `XMRange-<version>-apple-silicon.zip` or `XMRange-<version>-intel.zip`. Each zip has a `.sha256` file beside it.
-2. Unzip it and move `XMRange.app` to Applications.
+1. Download the disk image for your Mac from Releases: `XMRange-apple-silicon.dmg` or `XMRange-intel.dmg`. Each has a `.sha256` file beside it. (The zips are for the app's own updater.)
+2. Open it and drag XMRange onto Applications.
 3. The app is not signed by Apple, so macOS stops the first open:
    - **macOS 15 and later:** open the app once. Then open System Settings → Privacy & Security and click "Open Anyway".
    - **macOS 14 and earlier:** Control-click the app and select Open.

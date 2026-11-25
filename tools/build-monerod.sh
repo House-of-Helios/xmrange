@@ -34,6 +34,7 @@ export CCACHE_DISABLE=1
 CC_BIN="$(xcrun -f clang)"; CXX_BIN="$(xcrun -f clang++)"; AR_BIN="$(xcrun -f ar)"
 
 if [ ! -d "$SRC/.git" ]; then
+  rm -rf "$SRC"   # pruned by tools/prune-vendor.sh: only finished binaries were left
   git clone --filter=blob:none https://github.com/monero-project/monero.git "$SRC"
 fi
 if [ "$(git -C "$SRC" rev-parse HEAD)" != "$PIN" ]; then

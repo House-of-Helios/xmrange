@@ -5,6 +5,7 @@ use crate::sidecar::Sidecar;
 use anyhow::Result;
 use std::fs;
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
+use std::path::Path;
 use std::time::Duration;
 
 pub const SOCKS_PORT: u16 = 3640;
@@ -12,6 +13,27 @@ pub const SOCKS_PORT: u16 = 3640;
 /// (2026-10-03); later starts reuse the cache. With Tor on by default, a new user's first start
 /// must not fail on a slow network.
 pub const BOOTSTRAP_LIMIT: Duration = Duration::from_secs(180);
+
+/// Arti keeps old directory files: Bookkeeper's cache reached 147 MB in 3 days (2026-11-25). Over
+/// this, the whole cache goes before Arti starts and Arti fetches a fresh one (about 10 MB, about
+/// 5 s). The state dir (guard choices) is never touched. Same rule as Bookkeeper's TorCache.swift.
+const CACHE_LIMIT: u64 = 64 * 1024 * 1024;
+
+fn bound_cache(cache: &Path) {
+    if dir_size(cache) > CACHE_LIMIT {
+        let _ = fs::remove_dir_all(cache);
+    }
+}
+
+fn dir_size(p: &Path) -> u64 {
+    let entries = fs::read_dir(p).into_iter().flatten().flatten();
+    entries
+        .map(|e| match e.file_type() {
+            Ok(t) if t.is_dir() => dir_size(&e.path()),
+            _ => e.metadata().map(|m| m.len()).unwrap_or(0),
+        })
+        .sum()
+}
 
 pub fn socks_addr() -> String {
     format!("127.0.0.1:{SOCKS_PORT}")
@@ -37,6 +59,7 @@ impl Tor {
         let mut f = fs::OpenOptions::new().create(true).write(true).truncate(true).mode(0o600).open(&config)?;
         std::io::Write::write_all(&mut f, text.as_bytes())?;
         let args = vec!["proxy".to_string(), "-c".to_string(), config.display().to_string()];
+        bound_cache(&dir.join("cache"));
         let mut proc = Sidecar::spawn("arti", &crate::paths::arti_binary(), &args, &config, &[])?;
         proc.wait_until(BOOTSTRAP_LIMIT, cancel, |p| p.said("Sufficiently bootstrapped"))?;
         Ok(Tor { proc })
@@ -100,3 +123,25 @@ pub fn running() -> bool {
     SHARED.lock().unwrap_or_else(|e| e.into_inner()).0.is_some()
 }
 
+#[cfg(all(test, feature = "dev-diagnostics"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_cache_over_the_limit_goes_and_state_stays() {
+        let d = crate::paths::scratch_dir("tor-cache").unwrap();
+        let (cache, state) = (d.join("cache"), d.join("state"));
+        fs::create_dir_all(cache.join("sub")).unwrap();
+        fs::create_dir_all(&state).unwrap();
+        fs::write(state.join("guards"), "g").unwrap();
+        let big = fs::File::create(cache.join("sub/blob")).unwrap();
+        big.set_len(CACHE_LIMIT).unwrap(); // sparse: counts its length, costs no disk
+        bound_cache(&cache);
+        assert!(cache.join("sub/blob").exists(), "at the limit the cache stays");
+        fs::write(cache.join("one-more"), "x").unwrap();
+        bound_cache(&cache);
+        assert!(!cache.exists(), "over the limit the cache goes");
+        assert!(state.join("guards").exists(), "state is never touched");
+        bound_cache(&cache); // a missing cache is fine
+    }
+}

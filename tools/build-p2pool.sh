@@ -13,6 +13,7 @@ JOBS="$(sysctl -n hw.ncpu)"
 TARGET="-target arm64-apple-macos11.3 -ffile-prefix-map=$SRC=p2pool -ffile-prefix-map=$HOME=~"
 
 if [ ! -d "$SRC/.git" ]; then
+  rm -rf "$SRC"   # pruned by tools/prune-vendor.sh: only finished binaries were left
   git clone --depth 1 --branch "$TAG" --recursive --shallow-submodules https://github.com/SChernykh/p2pool.git "$SRC"
 fi
 [ "$(git -C "$SRC" rev-parse HEAD)" = "$PIN" ] || { echo "p2pool is not at $TAG ($PIN)"; exit 1; }

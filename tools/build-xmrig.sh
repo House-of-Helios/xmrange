@@ -7,6 +7,7 @@ PIN="0ce9664d3f540b72624e3733a592ddfdf02662a5"   # MoneroOcean xmrig 6.26.0-mo5
 PATCH="$ROOT/patches/xmrig-mo-xmrange.patch"
 
 if [ ! -d "$SRC/.git" ]; then
+  rm -rf "$SRC"   # pruned by tools/prune-vendor.sh: only finished binaries were left
   git clone --filter=blob:none https://github.com/MoneroOcean/xmrig.git "$SRC"
 fi
 if [ "$(git -C "$SRC" rev-parse HEAD)" != "$PIN" ]; then

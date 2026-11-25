@@ -4,10 +4,12 @@
 
 Go to the releases page: https://github.com/House-of-Helios/xmrange/releases
 
-Each release has two zips. Pick the one that matches your Mac.
+Each release has two disk images. Pick the one that matches your Mac.
 
-- `XMRange-<version>-apple-silicon.zip` for Macs with an Apple chip (M1 and later).
-- `XMRange-<version>-intel.zip` for Macs with an Intel processor.
+- `XMRange-apple-silicon.dmg` for Macs with an Apple chip (M1 and later).
+- `XMRange-intel.dmg` for Macs with an Intel processor.
+
+The zips beside them are for the app's own updater. You don't need them.
 
 The two apps are separate. Each one only updates to its own kind.
 
@@ -23,11 +25,11 @@ Open the Apple menu and choose **About This Mac**.
 
 ## 2. Check the download (optional)
 
-Beside each zip sits a file with the same name ending in `.sha256`. It holds the zip's checksum. In Terminal, `shasum -a 256 <the zip>` prints the checksum of your copy. The two should match.
+Beside each disk image sits a file with the same name ending in `.sha256`. It holds the disk image's checksum. In Terminal, `shasum -a 256 <the .dmg>` prints the checksum of your copy. The two should match.
 
 ## 3. Move it to Applications
 
-Unzip the file. Drag `XMRange.app` into your Applications folder.
+Open the disk image. Drag XMRange onto the Applications folder beside it. Then eject the disk image.
 
 ## 4. Why macOS hesitates
 
