@@ -1,10 +1,11 @@
 //! Updates from the project's GitHub releases (doctrine §1c, owner ruling 2026-11-16), which
 //! replaced the local update folder in 0.0.1. Release builds only; a dev app never asks GitHub.
 //!
-//! Each release carries `appcast.json` (the feed): its version, notes, and for each kind of Mac a
-//! zip, the zip's SHA-256, and an Ed25519 signature over "<version>\n<sha256>" made with the key
-//! whose public half is `RELEASE_PUBKEY`. The order of checks (Bookkeeper's): the signature before
-//! anything is downloaded, the SHA-256 after, unpack with `ditto` only then. A tampered zip, a zip
+//! Each release carries `appcast.json` (the feed): its version, notes, and for each kind of Mac
+//! the one universal `XMRange.dmg` (since 0.0.3; the same DMG people download), its SHA-256, and an
+//! Ed25519 signature over "<version>\n<sha256>" made with the key whose public half is
+//! `RELEASE_PUBKEY`. The order of checks (Bookkeeper's): the signature before anything is
+//! downloaded, the SHA-256 after, open the disk image only then. A tampered image, an image
 //! relabelled as another version, a foreign key and an unsigned feed are all refused.
 //!
 //! Every request goes through Tor (the shared Arti, like the price feed): GitHub sees a Tor exit,
@@ -26,8 +27,8 @@ pub const RELEASE_PUBKEY: &str = "bb7f78f14383cd0d97a98181281751b0346f03314860fb
 /// the github-publish skill): `tools/release.sh` sets it from `_devdata/github-read-token` and
 /// refuses to once the repo is public. Never set in a public build.
 const READ_TOKEN: Option<&str> = option_env!("XMRANGE_GITHUB_READ_TOKEN");
-/// A zip larger than this is refused while it downloads (the 0.3.0 zips are 21–24 MB).
-pub const MAX_ZIP: u64 = 200 * 1024 * 1024;
+/// A download larger than this is refused while it downloads (the 0.0.3 universal DMG is about 90 MB).
+pub const MAX_DOWNLOAD: u64 = 300 * 1024 * 1024;
 const MAX_FEED: u64 = 1024 * 1024;
 
 /// This build's kind of Mac, in the feed's words.
@@ -70,7 +71,7 @@ pub struct Feed {
     pub assets: BTreeMap<String, Asset>,
 }
 
-/// A verified offer: newer, for this kind of Mac, its signature good. `url` is where the zip is.
+/// A verified offer: newer, for this kind of Mac, its signature good. `url` is where the DMG is.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Offer {
     pub version: String,
@@ -79,10 +80,10 @@ pub struct Offer {
     pub url: String,
 }
 
-/// The one zip name a release ships for a kind of Mac, so a feed can't point anywhere else.
-pub fn expected_file(version: &str, arch: &str) -> String {
-    format!("XMRange-{version}-{}.zip", if arch == "x86_64" { "intel" } else { "apple-silicon" })
-}
+/// The one file a release ships (universal, every kind of Mac), so a feed can't point anywhere
+/// else. No version in the name: the signature binds the version, and the people's download link
+/// `releases/latest/download/XMRange.dmg` never changes.
+pub const RELEASE_FILE: &str = "XMRange.dmg";
 
 fn unhex(s: &str) -> Option<Vec<u8>> {
     if s.len() % 2 != 0 {
@@ -111,7 +112,7 @@ pub fn offer(feed: &Feed, running: &str, arch: &str, pub_hex: &str, url: impl Fn
         return None;
     }
     let asset = feed.assets.get(arch)?;
-    if asset.file != expected_file(v, arch) || !is_sha256_hex(&asset.sha256) {
+    if asset.file != RELEASE_FILE || !is_sha256_hex(&asset.sha256) {
         return None;
     }
     if !verify_sig(pub_hex, v, &asset.sha256, &asset.sig) {
@@ -135,20 +136,33 @@ pub fn sha256_file(path: &Path) -> std::io::Result<String> {
     Ok(ctx.finish().as_ref().iter().map(|b| format!("{b:02x}")).collect())
 }
 
-/// Unpacks `zip` into a fresh `dir` with `ditto` and returns `dir/XMRange.app`. The zip must hold
-/// exactly one entry, a real directory named `XMRange.app` (no symlink, nothing beside it).
-pub fn unpack(zip: &Path, dir: &Path) -> Result<PathBuf> {
+/// Opens the disk image `dmg` read-only at `dir/mnt` (hidden from Finder), copies its
+/// `XMRange.app` to `dir/XMRange.app` with `ditto`, always detaches, and returns the copy. The
+/// image must hold a real directory named `XMRange.app` (not a symlink). What sits beside it (the
+/// Applications shortcut, the window background) is never copied.
+pub fn unpack(dmg: &Path, dir: &Path) -> Result<PathBuf> {
     let _ = std::fs::remove_dir_all(dir);
     std::os::unix::fs::DirBuilderExt::mode(std::fs::DirBuilder::new().recursive(true), 0o700).create(dir)?;
-    let ok = std::process::Command::new("/usr/bin/ditto").args(["-x", "-k"]).arg(zip).arg(dir).status()?.success();
-    if !ok {
-        bail!("could not unpack the update");
+    let mnt = dir.join("mnt");
+    let attached = std::process::Command::new("/usr/bin/hdiutil")
+        .args(["attach", "-nobrowse", "-readonly", "-noautoopen", "-quiet", "-mountpoint"])
+        .arg(&mnt)
+        .arg(dmg)
+        .status()?
+        .success();
+    if !attached {
+        bail!("could not open the update");
     }
-    let names: Vec<_> = std::fs::read_dir(dir)?.filter_map(|e| e.ok()).map(|e| e.file_name()).collect();
+    let src = mnt.join("XMRange.app");
     let app = dir.join("XMRange.app");
-    let real_dir = std::fs::symlink_metadata(&app).map(|m| m.is_dir()).unwrap_or(false);
-    if names.len() != 1 || !real_dir {
-        bail!("the update zip does not hold just XMRange.app");
+    let real_dir = std::fs::symlink_metadata(&src).map(|m| m.is_dir()).unwrap_or(false);
+    let copied = real_dir && std::process::Command::new("/usr/bin/ditto").arg(&src).arg(&app).status().map(|s| s.success()).unwrap_or(false);
+    let _ = std::process::Command::new("/usr/bin/hdiutil").args(["detach", "-quiet", "-force"]).arg(&mnt).status();
+    if !real_dir {
+        bail!("the update does not hold XMRange.app");
+    }
+    if !copied {
+        bail!("could not copy the update out of its disk image");
     }
     Ok(app)
 }
@@ -217,27 +231,27 @@ pub fn check_github(running: &str, cancel: &dyn Fn() -> bool) -> Result<Option<O
     Ok(offer(&feed, running, this_arch(), RELEASE_PUBKEY, |f| urls.get(f).cloned()))
 }
 
-/// Downloads the offer's zip (through Tor) into `dir`, checks its SHA-256, unpacks it, and returns
-/// the unpacked `XMRange.app`. The zip and the unpacked copy stay in `dir` for the installer.
+/// Downloads the offer's DMG (through Tor) into `dir`, checks its SHA-256, copies the app out of
+/// it, and returns that `XMRange.app`. The DMG and the copy stay in `dir` for the installer.
 pub fn fetch(offer: &Offer, dir: &Path, cancel: &dyn Fn() -> bool) -> Result<PathBuf> {
     std::os::unix::fs::DirBuilderExt::mode(std::fs::DirBuilder::new().recursive(true), 0o700).create(dir)?;
-    let zip = dir.join(&offer.asset.file);
+    let dmg = dir.join(&offer.asset.file);
     {
         let _lease = crate::tor::acquire(cancel)?;
         let agent = agent(&crate::tor::socks_addr())?;
         let resp = get(&agent, &offer.url, "application/octet-stream")?;
-        let mut out = std::fs::File::create(&zip)?;
-        let n = std::io::copy(&mut resp.into_reader().take(MAX_ZIP + 1), &mut out)?;
-        if n > MAX_ZIP {
-            let _ = std::fs::remove_file(&zip);
-            bail!("the update is larger than {} MB", MAX_ZIP >> 20);
+        let mut out = std::fs::File::create(&dmg)?;
+        let n = std::io::copy(&mut resp.into_reader().take(MAX_DOWNLOAD + 1), &mut out)?;
+        if n > MAX_DOWNLOAD {
+            let _ = std::fs::remove_file(&dmg);
+            bail!("the update is larger than {} MB", MAX_DOWNLOAD >> 20);
         }
     }
-    if sha256_file(&zip)? != offer.asset.sha256 {
-        let _ = std::fs::remove_file(&zip);
+    if sha256_file(&dmg)? != offer.asset.sha256 {
+        let _ = std::fs::remove_file(&dmg);
         bail!("the update's checksum does not match its signed feed");
     }
-    unpack(&zip, &dir.join("unpacked"))
+    unpack(&dmg, &dir.join("unpacked"))
 }
 
 #[cfg(test)]
@@ -265,7 +279,7 @@ mod tests {
     }
     fn tv_feed() -> Feed {
         let mut assets = BTreeMap::new();
-        assets.insert("arm64".into(), Asset { file: "XMRange-0.0.2-apple-silicon.zip".into(), sha256: tv_sha(), sig: TV_SIG.into() });
+        assets.insert("arm64".into(), Asset { file: RELEASE_FILE.into(), sha256: tv_sha(), sig: TV_SIG.into() });
         Feed { version: "0.0.2".into(), notes: "n".into(), assets }
     }
     fn url(f: &str) -> Option<String> {
@@ -296,7 +310,7 @@ mod tests {
     fn offer_takes_only_a_signed_newer_build_for_this_mac() {
         let f = tv_feed();
         let o = offer(&f, "0.0.1", "arm64", TV_PUB, url).expect("a good offer");
-        assert_eq!((o.version.as_str(), o.url.as_str()), ("0.0.2", "u/XMRange-0.0.2-apple-silicon.zip"));
+        assert_eq!((o.version.as_str(), o.url.as_str()), ("0.0.2", "u/XMRange.dmg"));
         assert!(offer(&f, "0.0.2", "arm64", TV_PUB, url).is_none(), "not newer");
         assert!(offer(&f, "0.3.0", "arm64", TV_PUB, url).is_none(), "older than running");
         assert!(offer(&f, "0.0.1", "x86_64", TV_PUB, url).is_none(), "no asset for this Mac");
@@ -305,10 +319,9 @@ mod tests {
 
         let mut g = tv_feed();
         g.version = "0.0.3".into();
-        g.assets.get_mut("arm64").unwrap().file = "XMRange-0.0.3-apple-silicon.zip".into();
         assert!(offer(&g, "0.0.1", "arm64", TV_PUB, url).is_none(), "relabelled version");
 
-        for bad in ["../XMRange-0.0.2-apple-silicon.zip", "XMRange-0.0.2-intel.zip", "x.zip", ""] {
+        for bad in ["../XMRange.dmg", "XMRange-0.0.2-apple-silicon.zip", "XMRange-0.0.2-intel.zip", "x.dmg", ""] {
             let mut g = tv_feed();
             g.assets.get_mut("arm64").unwrap().file = bad.into();
             assert!(offer(&g, "0.0.1", "arm64", TV_PUB, url).is_none(), "{bad:?}");
@@ -335,34 +348,51 @@ mod tests {
         assert_eq!(sha256_file(&d.join("abc")).unwrap(), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
     }
 
-    fn zip_of(src: &Path, zip: &Path) {
-        assert!(std::process::Command::new("/usr/bin/ditto").args(["-c", "-k"]).arg(src).arg(zip).status().unwrap().success());
+    fn dmg_of(src: &Path, dmg: &Path) {
+        let ok = std::process::Command::new("/usr/bin/hdiutil")
+            .args(["create", "-quiet", "-volname", "XMRange", "-format", "UDZO", "-srcfolder"])
+            .arg(src)
+            .arg(dmg)
+            .status()
+            .unwrap()
+            .success();
+        assert!(ok);
+    }
+
+    fn mounted(mnt: &Path) -> bool {
+        let out = std::process::Command::new("/sbin/mount").output().unwrap();
+        String::from_utf8_lossy(&out.stdout).contains(&mnt.display().to_string())
     }
 
     #[test]
-    fn unpack_takes_just_one_real_xmrange_app() {
+    fn unpack_copies_only_a_real_xmrange_app_and_always_detaches() {
         let d = scratch();
         let good = d.join("good");
         fs::create_dir_all(good.join("XMRange.app/Contents")).unwrap();
-        zip_of(&good, &d.join("good.zip"));
-        assert_eq!(unpack(&d.join("good.zip"), &d.join("out1")).unwrap(), d.join("out1/XMRange.app"));
-
-        let extra = d.join("extra");
-        fs::create_dir_all(extra.join("XMRange.app")).unwrap();
-        fs::write(extra.join("other"), "x").unwrap();
-        zip_of(&extra, &d.join("extra.zip"));
-        assert!(unpack(&d.join("extra.zip"), &d.join("out2")).is_err(), "something beside the app");
+        fs::write(good.join("XMRange.app/Contents/Info.plist"), "p").unwrap();
+        std::os::unix::fs::symlink("/Applications", good.join("Applications")).unwrap();
+        fs::create_dir_all(good.join(".background")).unwrap();
+        dmg_of(&good, &d.join("good.dmg"));
+        let app = unpack(&d.join("good.dmg"), &d.join("out1")).unwrap();
+        assert_eq!(app, d.join("out1/XMRange.app"));
+        assert!(app.join("Contents/Info.plist").is_file());
+        assert!(!d.join("out1/Applications").exists(), "the shortcut is never copied");
+        assert!(!mounted(&d.join("out1/mnt")), "detached");
 
         let link = d.join("link");
         fs::create_dir_all(&link).unwrap();
         std::os::unix::fs::symlink("/Applications", link.join("XMRange.app")).unwrap();
-        zip_of(&link, &d.join("link.zip"));
-        assert!(unpack(&d.join("link.zip"), &d.join("out3")).is_err(), "a symlink named XMRange.app");
+        dmg_of(&link, &d.join("link.dmg"));
+        assert!(unpack(&d.join("link.dmg"), &d.join("out2")).is_err(), "a symlink named XMRange.app");
+        assert!(!mounted(&d.join("out2/mnt")), "detached after a refusal");
 
         let other = d.join("other");
         fs::create_dir_all(other.join("Other.app")).unwrap();
-        zip_of(&other, &d.join("other.zip"));
-        assert!(unpack(&d.join("other.zip"), &d.join("out4")).is_err(), "another app");
+        dmg_of(&other, &d.join("other.dmg"));
+        assert!(unpack(&d.join("other.dmg"), &d.join("out3")).is_err(), "another app");
+
+        fs::write(d.join("junk.dmg"), "not a disk image").unwrap();
+        assert!(unpack(&d.join("junk.dmg"), &d.join("out4")).is_err(), "not a disk image");
     }
 
     /// Live, through the bundled Arti, against the real repo. Private repo: build with

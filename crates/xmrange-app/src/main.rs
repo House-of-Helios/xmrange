@@ -700,7 +700,7 @@ fn run_install(app: AppHandle) -> Result<(), String> {
         return Err("could not copy the update".into());
     }
 
-    // 2. Verify before anything is swapped (the signed feed already vouched for the zip). The app is ad-hoc signed (no Team ID until a Developer
+    // 2. Verify before anything is swapped (the signed feed already vouched for the DMG). The app is ad-hoc signed (no Team ID until a Developer
     // ID arrives in Stage 4), so a Team-ID or notarization requirement isn't possible yet; pinning
     // the bundle identifier instead still catches a corrupted or mismatched bundle.
     // The leading "=" tells codesign this is literal requirement source text, not a path to a

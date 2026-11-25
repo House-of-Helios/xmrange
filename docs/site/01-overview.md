@@ -2,7 +2,7 @@
 
 XMRange is a Mac app that mines Monero (XMR) on your CPU. It has one goal: the most hashes for every watt your Mac spends.
 
-It runs on Apple Silicon Macs. A separate build runs on Intel Macs. Everything stays on your Mac, and it never asks for an administrator password.
+It runs on Apple Silicon and Intel Macs: one app for both. Everything stays on your Mac, and it never asks for an administrator password.
 
 <!-- screenshot: the main window on the mining tab, mining, showing the hashrate, h/w, cores and wallet cards -->
 ![The main window on the mining tab, mining](img/overview.png)

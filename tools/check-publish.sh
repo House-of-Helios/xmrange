@@ -28,7 +28,7 @@ report() { # <label> <text>
   [ "$n" -gt 0 ] && { echo "FOUND: $label: $n monero address(es) other than the default and the public ones"; fail=1; }
   n=$(grep -cE "/Users/$ME|$HOME" <<<"$text" || true)
   [ "$n" -gt 0 ] && { echo "FOUND: $label: $n line(s) with this Mac's home path or user name"; fail=1; }
-  n=$(grep -oiE '[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}' <<<"$text" | grep -viE '^(support@moneroocean\.stream|git@.*)$|@example\.com$' | sort -u | wc -l | tr -d ' ')
+  n=$(grep -oiE '[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}' <<<"$text" | grep -viE '^(support@moneroocean\.stream|git@.*)$|@example\.com$|@[0-9]x\.(png|jpg|tiff)$' | sort -u | wc -l | tr -d ' ')
   [ "$n" -gt 0 ] && { echo "FOUND: $label: $n e-mail address(es)"; fail=1; }
   # The pattern is split ("co-author"+"ed-by") so this file never matches itself.
   n=$(grep -ciE "co-author""ed-by|generated with \[?claude" <<<"$text" || true)

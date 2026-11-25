@@ -14,6 +14,23 @@ cd "$ROOT"
 # ARCH=x86_64: the Intel Mac app (Stage 3), from the x86_64 helpers (tools/build-x86_64.sh), for
 # macOS 10.15. Default: Apple Silicon, macOS 11.3.
 ARCH="${ARCH:-arm64}"
+# ARCH=universal (what releases ship since 0.0.3): both single-arch bundles, then every binary in
+# Contents/MacOS merged with lipo into one app that runs on every Mac (macOS 10.15 floor: Intel's).
+if [ "$ARCH" = universal ]; then
+  ARM="$(ARCH=arm64 "$0")"; X86="$(ARCH=x86_64 "$0")"
+  APP="$ROOT/target/release-app-universal/XMRange.app"
+  rm -rf "$APP" && mkdir -p "$(dirname "$APP")" && ditto "$ARM" "$APP"
+  for f in "$APP/Contents/MacOS/"*; do
+    n="$(basename "$f")"
+    if lipo "$f" -verify_arch x86_64 2>/dev/null; then continue; fi   # already universal (house-report)
+    lipo -create "$ARM/Contents/MacOS/$n" "$X86/Contents/MacOS/$n" -output "$f"
+    lipo "$f" -verify_arch arm64 x86_64 || { echo "$n is not universal" >&2; exit 1; }
+  done
+  plutil -replace LSMinimumSystemVersion -string 10.15 "$APP/Contents/Info.plist"
+  codesign --force --deep --sign - "$APP" >/dev/null 2>&1
+  echo "$APP"
+  exit 0
+fi
 if [ "$ARCH" = x86_64 ]; then
   XMRIG="$ROOT/vendor/xmrig-mo/build-x86_64/xmrig"
   P2POOL="$ROOT/vendor/p2pool-x86_64/build/p2pool"

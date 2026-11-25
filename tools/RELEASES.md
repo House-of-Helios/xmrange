@@ -12,10 +12,11 @@ app's own update pill.
    NOTES="what changed, one line" tools/release.sh
    ```
    It refuses a dirty tree, a version already released and a signing key that doesn't match the
-   app; publishes the code (`tools/publish.sh`: the filtered `public` branch); builds, zips, hashes
-   and signs both apps, with a DMG of each for people (Apple silicon and Intel); writes `appcast.json`; creates the GitHub release
-   on the `public` commit; then downloads it back and checks checksums, signatures, codesign, the DMGs and
-   version.
+   app; publishes the code (`tools/publish.sh`: the filtered `public` branch); builds one universal app
+   (Apple silicon and Intel) into one `XMRange.dmg`, hashes and signs it; writes `appcast.json`;
+   creates the GitHub release on the `public` commit; then downloads it back and checks checksum,
+   signature, DMG contents, codesign, both arches and version. The DMG is the only file people
+   download and the only file the app's updater takes.
 
 ## Keys (this Mac only, in `_devdata/`, never in git)
 

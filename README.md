@@ -1,6 +1,6 @@
 # XMRange
 
-XMRange is a Mac app that mines Monero (XMR) on the CPU. Its goal is the most hashes per watt that the Mac can give. It runs on Apple Silicon Macs and, as a separate app, on Intel Macs. It keeps everything on the Mac and needs no administrator password.
+XMRange is a Mac app that mines Monero (XMR) on the CPU. Its goal is the most hashes per watt that the Mac can give. It runs on Apple Silicon and Intel Macs, as one universal app. It keeps everything on the Mac and needs no administrator password.
 
 - **Measures and does not guess.** "Run trials" measures every core count and utility priority. On laptops, it also measures with and without Low Power Mode. The results are saved on the Mac.
 - **Three profiles from the trials:**
@@ -40,7 +40,7 @@ At rest:
 
 ## Install
 
-1. Download the disk image for your Mac from Releases: `XMRange-apple-silicon.dmg` or `XMRange-intel.dmg`. Each has a `.sha256` file beside it. (The zips are for the app's own updater.)
+1. Download `XMRange.dmg` from Releases (one app for every Mac): https://github.com/House-of-Helios/xmrange/releases/latest/download/XMRange.dmg. A `.sha256` file sits beside it.
 2. Open it and drag XMRange onto Applications.
 3. The app is not signed by Apple, so macOS stops the first open:
    - **macOS 15 and later:** open the app once. Then open System Settings → Privacy & Security and click "Open Anyway".
@@ -63,8 +63,7 @@ tools/build-p2pool.sh     # p2pool at a pinned tag
 tools/build-arti.sh       # Arti (Tor) at a pinned tag
 tools/build-monerod.sh    # monerod at a pinned tag, dependencies built from source (contrib/depends)
 tools/build-x86_64.sh     # the same helpers for Intel Macs
-tools/build-release-app.sh              # XMRange.app for Apple Silicon
-ARCH=x86_64 tools/build-release-app.sh  # XMRange.app for Intel Macs
+ARCH=universal tools/build-release-app.sh  # one XMRange.app for every Mac (both halves, merged with lipo)
 ```
 
 Each helper is built from its own upstream source, at a pinned version, with only system libraries.

@@ -3,11 +3,12 @@
 #   1. refuse: a dirty tree, an existing release of this version, a signing key that doesn't match
 #      RELEASE_PUBKEY in update.rs (a mismatch would strand every installed app)
 #   2. tools/publish.sh: the filtered `public` branch, scanned, pushed to GitHub's main
-#   3. for each kind of Mac: tools/check-release.sh, tools/build-release-app.sh, a ditto zip, its
-#      SHA-256, an Ed25519 signature over "<version>\n<sha256>", verified against the app's key;
-#      and a DMG for people (the zip is for the app's updater only)
+#   3. tools/check-release.sh for both kinds of Mac, then one universal app
+#      (tools/build-release-app.sh, ARCH=universal) in one unsigned DMG, XMRange.dmg: the file people
+#      download and the file the app updater takes. Its SHA-256 and an Ed25519 signature over
+#      "<version>\n<sha256>", verified against the app key
 #   4. appcast.json (the feed the app reads), then the GitHub release, tagged on the `public` commit
-#   5. verify by download: checksums, signatures, codesign, version, DMG contents, from GitHub itself
+#   5. verify by download: checksum, signature, DMG contents, codesign, both arches, version
 #   6. clean up: target/ and the local release files go (GitHub holds them)
 #
 # While the repo is private, the app reads releases with a read-only, single-repo token compiled in
@@ -48,79 +49,62 @@ fi
 tools/publish.sh "XMRange $VERSION"
 PUBLIC_SHA="$(git rev-parse public)"
 
-# 3. The apps.
+# 3. The app: one universal bundle, one DMG (owner, 2026-11-25: one app, DMG only).
 OUT="$ROOT/_devdata/release/$VERSION"
-mkdir -p "$OUT"
-ASSETS=()
-FEED_ASSETS=""
-for arch in arm64 x86_64; do
-  name=$([ "$arch" = arm64 ] && echo apple-silicon || echo intel)
-  ARCH=$arch tools/check-release.sh
-  APP="$(ARCH=$arch tools/build-release-app.sh)"
-  if [ "$VIS" != PRIVATE ] && grep -aqE '(github_pat|gh[pousr])_[A-Za-z0-9_]{20,}' "$APP/Contents/MacOS/"*; then
-    die "public repo, but the $arch build carries a GitHub token"
-  fi
-  ZIP="$OUT/XMRange-$VERSION-$name.zip"
-  rm -f "$ZIP"
-  ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
-  SHA="$(shasum -a 256 "$ZIP" | cut -d' ' -f1)"
-  (cd "$OUT" && shasum -a 256 "$(basename "$ZIP")" > "$(basename "$ZIP").sha256")
-  SIG="$(sign sign "$KEY" "$VERSION" "$SHA")"
-  sign verify "$PUB_APP" "$VERSION" "$SHA" "$SIG" >/dev/null || die "$arch: signature does not verify with the app's key"
-  ASSETS+=("$ZIP" "$ZIP.sha256")
-  # For people: a disk image with the app and an Applications shortcut to drag it onto. No version
-  # in its name, so releases/latest/download/XMRange-<kind>.dmg is a link that never changes. The
-  # DMG stays unsigned (Archivist's lesson): Gatekeeper refuses a disk image signed by an identity
-  # Apple doesn't know, but mounts an unsigned one. Only the app inside is signed.
-  DMG="$OUT/XMRange-$name.dmg"
-  STAGE="$(mktemp -d "$OUT/dmg.XXXX")"
-  ditto "$APP" "$STAGE/XMRange.app"
-  ln -s /Applications "$STAGE/Applications"
-  hdiutil create -volname "XMRange" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
-  rm -rf "$STAGE"
-  (cd "$OUT" && shasum -a 256 "$(basename "$DMG")" > "$(basename "$DMG").sha256")
-  ASSETS+=("$DMG" "$DMG.sha256")
-  FEED_ASSETS="$FEED_ASSETS\"$arch\":{\"file\":\"$(basename "$ZIP")\",\"sha256\":\"$SHA\",\"sig\":\"$SIG\"},"
-  echo "release: $ZIP"
-done
+rm -rf "$OUT" && mkdir -p "$OUT"
+for arch in arm64 x86_64; do ARCH=$arch tools/check-release.sh; done
+APP="$(ARCH=universal tools/build-release-app.sh)"
+if [ "$VIS" != PRIVATE ] && grep -aqE '(github_pat|gh[pousr])_[A-Za-z0-9_]{20,}' "$APP/Contents/MacOS/"*; then
+  die "public repo, but the build carries a GitHub token"
+fi
+# A disk image with the app and an Applications shortcut to drag it onto. No version in its name,
+# so releases/latest/download/XMRange.dmg never changes. The DMG stays unsigned (Archivist's
+# lesson): Gatekeeper refuses a disk image signed by an identity Apple doesn't know, but mounts an
+# unsigned one. Only the app inside is signed.
+DMG="$OUT/XMRange.dmg"
+STAGE="$(mktemp -d "$OUT/dmg.XXXX")"
+ditto "$APP" "$STAGE/XMRange.app"
+ln -s /Applications "$STAGE/Applications"
+hdiutil create -volname "XMRange" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
+rm -rf "$STAGE"
+(cd "$OUT" && shasum -a 256 XMRange.dmg > XMRange.dmg.sha256)
+SHA="$(cut -d' ' -f1 "$DMG.sha256")"
+SIG="$(sign sign "$KEY" "$VERSION" "$SHA")"
+sign verify "$PUB_APP" "$VERSION" "$SHA" "$SIG" >/dev/null || die "the signature does not verify with the app's key"
+ASSET="{\"file\":\"XMRange.dmg\",\"sha256\":\"$SHA\",\"sig\":\"$SIG\"}"
+echo "release: $DMG"
 
-# 4. The feed, then the release.
+# 4. The feed, then the release. Both kinds of Mac point at the one universal DMG.
 NOTES_JSON="$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$NOTES")"
-printf '{"version":"%s","notes":%s,"assets":{%s}}\n' "$VERSION" "$NOTES_JSON" "${FEED_ASSETS%,}" > "$OUT/appcast.json"
+printf '{"version":"%s","notes":%s,"assets":{"arm64":%s,"x86_64":%s}}\n' "$VERSION" "$NOTES_JSON" "$ASSET" "$ASSET" > "$OUT/appcast.json"
 python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$OUT/appcast.json" || die "appcast.json is not valid JSON"
 BODY="$OUT/notes.md"
 cat > "$BODY" <<EOF
 $NOTES
 
-- **Apple silicon Macs:** \`XMRange-apple-silicon.dmg\`
-- **Intel Macs:** \`XMRange-intel.dmg\`
-
-Open the DMG and drag XMRange onto Applications. Each file has a \`.sha256\` beside it; the zips are for the app's own updater. The app is ad-hoc signed (no Apple Developer account), so macOS asks once: see the README's "open anyway" steps.
+**Install:** download **XMRange.dmg** (every Mac, Apple silicon and Intel), open it, drag XMRange onto Applications. The app is ad-hoc signed (no Apple Developer account), so macOS asks once: see the README's "open anyway" steps.
 EOF
 gh release create "$TAG" --repo "$REPO" --target "$PUBLIC_SHA" --title "XMRange $VERSION" --notes-file "$BODY" \
-  "${ASSETS[@]}" "$OUT/appcast.json"
+  "$DMG" "$DMG.sha256" "$OUT/appcast.json"
 
 # 5. Verify by download, from GitHub itself.
 DL="$(mktemp -d "$ROOT/_devdata/release/verify-$VERSION.XXXX")"
 gh release download "$TAG" --repo "$REPO" --dir "$DL"
-(cd "$DL" && shasum -a 256 -c ./*.sha256)
+(cd "$DL" && shasum -a 256 -c XMRange.dmg.sha256)
 for arch in arm64 x86_64; do
-  read -r FILE SHA SIG < <(python3 -c 'import json,sys; a=json.load(open(sys.argv[1]))["assets"][sys.argv[2]]; print(a["file"],a["sha256"],a["sig"])' "$DL/appcast.json" "$arch")
-  [ "$(shasum -a 256 "$DL/$FILE" | cut -d' ' -f1)" = "$SHA" ] || die "$arch: downloaded zip does not match the feed"
-  sign verify "$PUB_APP" "$VERSION" "$SHA" "$SIG" >/dev/null || die "$arch: downloaded feed's signature does not verify"
-  mkdir "$DL/$arch"
-  ditto -x -k "$DL/$FILE" "$DL/$arch"
-  codesign --verify --deep --strict "$DL/$arch/XMRange.app" || die "$arch: codesign does not verify"
-  V="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$DL/$arch/XMRange.app/Contents/Info.plist")"
-  [ "$V" = "$VERSION" ] || die "$arch: bundle says $V, not $VERSION"
-  name=$([ "$arch" = arm64 ] && echo apple-silicon || echo intel)
-  hdiutil attach -nobrowse -readonly -mountpoint "$DL/dmg-$arch" "$DL/XMRange-$name.dmg" >/dev/null
-  ok=1
-  [ -d "$DL/dmg-$arch/XMRange.app" ] && [ -L "$DL/dmg-$arch/Applications" ] \
-    && codesign --verify --deep --strict "$DL/dmg-$arch/XMRange.app" || ok=0
-  hdiutil detach "$DL/dmg-$arch" >/dev/null
-  [ "$ok" = 1 ] || die "$arch: the DMG does not hold a verified XMRange.app and the Applications shortcut"
+  read -r FILE FSHA FSIG < <(python3 -c 'import json,sys; a=json.load(open(sys.argv[1]))["assets"][sys.argv[2]]; print(a["file"],a["sha256"],a["sig"])' "$DL/appcast.json" "$arch")
+  [ "$FILE" = XMRange.dmg ] && [ "$(shasum -a 256 "$DL/$FILE" | cut -d' ' -f1)" = "$FSHA" ] || die "$arch: the feed does not match the downloaded DMG"
+  sign verify "$PUB_APP" "$VERSION" "$FSHA" "$FSIG" >/dev/null || die "$arch: downloaded feed's signature does not verify"
 done
+hdiutil attach -nobrowse -readonly -mountpoint "$DL/dmg" "$DL/XMRange.dmg" >/dev/null
+ok=1
+M="$DL/dmg/XMRange.app"
+[ -d "$M" ] && [ -L "$DL/dmg/Applications" ] && codesign --verify --deep --strict "$M" || ok=0
+V="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$M/Contents/Info.plist" 2>/dev/null || true)"
+[ "$V" = "$VERSION" ] || ok=0
+for f in "$M/Contents/MacOS/"*; do lipo "$f" -verify_arch arm64 x86_64 || ok=0; done
+hdiutil detach "$DL/dmg" >/dev/null
+[ "$ok" = 1 ] || die "the downloaded DMG does not hold a verified universal XMRange.app $VERSION and the Applications shortcut"
 echo "✅ $TAG released and verified from GitHub: https://github.com/$REPO/releases/tag/$TAG"
 
 # 6. Clean up (owner, 2026-11-25): build leftovers are temporary. GitHub now holds the release

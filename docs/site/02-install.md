@@ -4,28 +4,13 @@
 
 Go to the releases page: https://github.com/House-of-Helios/xmrange/releases
 
-Each release has two disk images. Pick the one that matches your Mac.
+Download `XMRange.dmg`. It is one app for every Mac: Apple silicon (M1 and later) and Intel. Your Mac runs the part that fits it.
 
-- `XMRange-apple-silicon.dmg` for Macs with an Apple chip (M1 and later).
-- `XMRange-intel.dmg` for Macs with an Intel processor.
-
-The zips beside them are for the app's own updater. You don't need them.
-
-The two apps are separate. Each one only updates to its own kind.
-
-### Which Mac do I have?
-
-Open the Apple menu and choose **About This Mac**.
-
-- If you see **Chip** followed by a name like "Apple M2", take apple-silicon.
-- If you see **Processor** followed by a name like "Intel Core i5", take intel.
-
-<!-- screenshot: About This Mac showing the Chip line, and beside it one showing the Processor line -->
-![About This Mac on an Apple silicon Mac (Chip line) and on an Intel Mac (Processor line)](img/about-this-mac.png)
+Direct link: https://github.com/House-of-Helios/xmrange/releases/latest/download/XMRange.dmg
 
 ## 2. Check the download (optional)
 
-Beside each disk image sits a file with the same name ending in `.sha256`. It holds the disk image's checksum. In Terminal, `shasum -a 256 <the .dmg>` prints the checksum of your copy. The two should match.
+Beside the disk image sits `XMRange.dmg.sha256`. It holds the disk image's checksum. In Terminal, `shasum -a 256 <the .dmg>` prints the checksum of your copy. The two should match.
 
 ## 3. Move it to Applications
 
