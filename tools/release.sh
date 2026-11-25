@@ -57,16 +57,16 @@ APP="$(ARCH=universal tools/build-release-app.sh)"
 if [ "$VIS" != PRIVATE ] && grep -aqE '(github_pat|gh[pousr])_[A-Za-z0-9_]{20,}' "$APP/Contents/MacOS/"*; then
   die "public repo, but the build carries a GitHub token"
 fi
-# A disk image with the app and an Applications shortcut to drag it onto. No version in its name,
-# so releases/latest/download/XMRange.dmg never changes. The DMG stays unsigned (Archivist's
-# lesson): Gatekeeper refuses a disk image signed by an identity Apple doesn't know, but mounts an
-# unsigned one. Only the app inside is signed.
+# A disk image with the app and an Applications shortcut to drag it onto, laid out over
+# assets/dmg/background.png by dmgbuild (tools/dmg-settings.py; it writes the window's .DS_Store
+# itself, never through Finder). No version in its name, so releases/latest/download/XMRange.dmg
+# never changes. The DMG stays unsigned (Archivist's lesson): Gatekeeper refuses a disk image
+# signed by an identity Apple doesn't know, but mounts an unsigned one. Only the app inside is signed.
 DMG="$OUT/XMRange.dmg"
-STAGE="$(mktemp -d "$OUT/dmg.XXXX")"
-ditto "$APP" "$STAGE/XMRange.app"
-ln -s /Applications "$STAGE/Applications"
-hdiutil create -volname "XMRange" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
-rm -rf "$STAGE"
+tools/build-dmgbuild.sh >/dev/null
+DB="$ROOT/vendor/dmgbuild"
+PYTHONPATH="$DB/dmgbuild/src:$DB/ds_store/src:$DB/mac_alias/src:$DB/meta" python3 -m dmgbuild \
+  -s tools/dmg-settings.py -D app="$APP" -D background="$ROOT/assets/dmg/background.png" XMRange "$DMG" >/dev/null
 (cd "$OUT" && shasum -a 256 XMRange.dmg > XMRange.dmg.sha256)
 SHA="$(cut -d' ' -f1 "$DMG.sha256")"
 SIG="$(sign sign "$KEY" "$VERSION" "$SHA")"
@@ -99,7 +99,7 @@ done
 hdiutil attach -nobrowse -readonly -mountpoint "$DL/dmg" "$DL/XMRange.dmg" >/dev/null
 ok=1
 M="$DL/dmg/XMRange.app"
-[ -d "$M" ] && [ -L "$DL/dmg/Applications" ] && codesign --verify --deep --strict "$M" || ok=0
+[ -d "$M" ] && [ -L "$DL/dmg/Applications" ] && [ -f "$DL/dmg/.background.tiff" ] && [ -f "$DL/dmg/.DS_Store" ] && codesign --verify --deep --strict "$M" || ok=0
 V="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$M/Contents/Info.plist" 2>/dev/null || true)"
 [ "$V" = "$VERSION" ] || ok=0
 for f in "$M/Contents/MacOS/"*; do lipo "$f" -verify_arch arm64 x86_64 || ok=0; done
