@@ -93,7 +93,9 @@ done
 if [ ! -d "$UI" ] || [ -z "$(find "$UI" -type f -print -quit)" ]; then echo "CHECKER BROKEN: frontend tree not found"; exit 2; fi
 
 check "cli release binary" "$(bytes "$CLI")" "Hashes per watt" default      # clap's `about` text
-check "app release binary" "$(bytes "$APP")" "every watt, weighed" default  # the app's TAGLINE const
+# The bundle id (tauri.conf.json), not the TAGLINE: x86_64 codegen stores that short const as
+# instruction immediates in pieces, so it never appears whole in the Intel binary (0.0.2, 2026-11-25).
+check "app release binary" "$(bytes "$APP")" "house.helios.xmrange" default
 check "app frontend ($DIST/)" "$(find "$UI" -type f -exec cat {} + | LC_ALL=C tr -cs '[:print:]' '\n')" "every watt, weighed"  # index.html
 
 # The bundled helpers (xmrig, p2pool, Arti): third-party code, so only the path needles apply (no

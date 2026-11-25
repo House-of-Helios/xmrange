@@ -8,6 +8,7 @@
 #      and a DMG for people (the zip is for the app's updater only)
 #   4. appcast.json (the feed the app reads), then the GitHub release, tagged on the `public` commit
 #   5. verify by download: checksums, signatures, codesign, version, DMG contents, from GitHub itself
+#   6. clean up: target/ and the local release files go (GitHub holds them)
 #
 # While the repo is private, the app reads releases with a read-only, single-repo token compiled in
 # from _devdata/github-read-token (owner ruling 2026-11-16). Once the repo is public, no token is
@@ -121,3 +122,9 @@ for arch in arm64 x86_64; do
   [ "$ok" = 1 ] || die "$arch: the DMG does not hold a verified XMRange.app and the Applications shortcut"
 done
 echo "✅ $TAG released and verified from GitHub: https://github.com/$REPO/releases/tag/$TAG"
+
+# 6. Clean up (owner, 2026-11-25): build leftovers are temporary. GitHub now holds the release
+#    files, and every target/ folder is rebuilt by the next build. A failed run keeps its files for
+#    a look; this step runs only after the download check passed.
+rm -rf "$ROOT/target" "$OUT" "$DL"
+echo "🧹 removed target/ and the local release files"
